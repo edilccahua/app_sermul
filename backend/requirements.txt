@@ -1,0 +1,30 @@
+# ============================================
+# SERMUL - Backend Requirements (Producción)
+# Sistema de Gestión de Herramientas para Paradas de Planta
+# ============================================
+
+# -- Sprint 0: Core + Auth + Database
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+psycopg2-binary>=2.9.9
+pydantic>=2.0.0
+pydantic-settings>=2.1.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1
+python-multipart>=0.0.6
+
+# -- Sprint 1: Catálogo, Check-in/out, Paradas, Historial
+# (sin nuevas dependencias — todo se cubre con las de Sprint 0)
+
+# -- Sprint 2: Reservas, Grupos (Excel), Dashboard
+openpyxl>=3.1.2
+pandas>=2.1.0
+
+# -- Sprint 3: Tareas, Riesgos, PETARs
+# (sin nuevas dependencias — python-multipart ya instalado para PDFs)
+
+# -- Sprint 4: Cierre de parada, PWA, Offline sync
+# (sin nuevas dependencias backend — lógica en SQLAlchemy + triggers)

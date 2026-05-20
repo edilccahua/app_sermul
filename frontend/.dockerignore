@@ -1,0 +1,12 @@
+# Archivos que NO deben copiarse al contenedor
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.md
+Dockerfile
+Dockerfile.dev
+nginx.conf
+.vscode

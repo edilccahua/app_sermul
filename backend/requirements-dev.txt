@@ -1,0 +1,18 @@
+# ============================================
+# SERMUL - Backend Requirements (Desarrollo)
+# Incluye producción + herramientas de testing, lint y type check
+# ============================================
+
+-r requirements.txt
+
+# -- Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.26.0          # Necesario para TestClient de FastAPI
+
+# -- Lint y Type Check
+ruff>=0.1.0
+mypy>=1.8.0
+
+# -- Utilidades de desarrollo
+python-dotenv>=1.0.0   # Cargar variables .env en desarrollo local

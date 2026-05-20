@@ -1,0 +1,23 @@
+# ============================================
+# SERMUL Frontend - DESARROLLO
+# Node 20 + Vite dev server con hot-reload
+# Usado por: docker-compose.override.yml
+# ============================================
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar dependencias
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# El código fuente se monta vía volume en docker-compose.override.yml
+# No hacemos COPY . . aquí porque el bind mount lo reemplazaría
+
+# Puerto Vite dev (docker-compose.override.yml: "5173:5173")
+EXPOSE 5173
+
+# El command se define en docker-compose.override.yml:
+#   npm run dev -- --host 0.0.0.0
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

@@ -1,0 +1,70 @@
+services:
+
+  # 1. Base de Datos - PostgreSQL 15
+  db:
+    image: postgres:15
+    container_name: sermul_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sermul_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sermul_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sermul_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql  # DDL + Seeds
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sermul_user} -d ${POSTGRES_DB:-sermul_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sermul_network
+
+  # 2. Backend - FastAPI + Uvicorn
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sermul_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app  # Hot reload en desarrollo
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sermul_user}:${POSTGRES_PASSWORD:-sermul_password}@db:5432/${POSTGRES_DB:-sermul_db}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sermul_network
+
+  # 3. Frontend - Nginx sirviendo SPA de Vue 3
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sermul_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - sermul_network
+
+# Volúmenes persistentes
+volumes:
+  pgdata:
+    name: sermul_pgdata
+
+# Red interna explícita
+networks:
+  sermul_network:
+    name: sermul_network
+    driver: bridge
