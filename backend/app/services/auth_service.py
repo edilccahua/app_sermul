@@ -10,7 +10,7 @@ class AuthService:
     def __init__(self, db: Session):
         self.db = db
 
-    def authenticate(self, dni: str, password: str) -> tuple[Usuario | None, str | None]:
+    def authenticate(self, dni: str, password: str) -> tuple[Usuario | None, str]:
         usuario = (
             self.db.query(Usuario)
             .filter(Usuario.dni == dni, Usuario.activo.is_(True))
@@ -18,7 +18,7 @@ class AuthService:
         )
 
         if usuario is None or not verify_password(password, usuario.password_hash):
-            return None, None
+            return None, ""
 
         usuario.ultimo_acceso = datetime.now(timezone.utc)
         self.db.commit()

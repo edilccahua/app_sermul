@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..core.security import decode_access_token
 from ..models.usuario import Usuario
+from ..models.permiso import Permiso, RolPermiso
 
 security_scheme = HTTPBearer()
 
@@ -15,8 +16,8 @@ def get_current_user(
 ) -> Usuario:
     try:
         payload = decode_access_token(credentials.credentials)
-        dni: str = payload.get("sub")
-        if dni is None:
+        dni = str(payload.get("sub", ""))
+        if not dni:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token inválido",
@@ -42,3 +43,40 @@ def get_current_user(
         )
 
     return usuario
+
+
+class RequirePermission:
+    def __init__(self, permiso_codigo: str):
+        self.permiso_codigo = permiso_codigo
+
+    def __call__(
+        self,
+        usuario: Usuario = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> Usuario:
+        permiso = (
+            db.query(Permiso)
+            .filter(Permiso.codigo == self.permiso_codigo)
+            .first()
+        )
+        if not permiso:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Permiso '{self.permiso_codigo}' no encontrado en el sistema",
+            )
+
+        rol_permiso = (
+            db.query(RolPermiso)
+            .filter(
+                RolPermiso.rol_id == usuario.rol_id,
+                RolPermiso.permiso_id == permiso.id,
+            )
+            .first()
+        )
+        if not rol_permiso:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para esta acción",
+            )
+
+        return usuario

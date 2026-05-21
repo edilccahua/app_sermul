@@ -13,8 +13,6 @@ build/
 .git
 .gitignore
 sql/
-tests/
-requirements-dev.txt
 venv/
 .venv/
 README.md

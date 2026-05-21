@@ -135,7 +135,7 @@ CREATE TABLE catalogo_materiales (
     
     -- Campos económicos
     costo_reposicion DECIMAL(10, 2),
-    moneda VARCHAR(3) DEFAULT 'USD',
+    moneda VARCHAR(3) DEFAULT 'PEN',
     proveedor VARCHAR(200),
     
     -- Campos específicos para EPPs
@@ -155,7 +155,7 @@ CREATE TABLE catalogo_materiales (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT chk_tipo_material CHECK (tipo_material IN ('Herramienta', 'EPP', 'Consumible'))
+    CONSTRAINT chk_tipo_material CHECK (tipo_material IN ('Herramienta', 'EPP_Devolutivo', 'EPP_Consumible', 'Suministro'))
 );
 
 CREATE INDEX idx_catalogo_codigo ON catalogo_materiales(codigo_interno);
@@ -736,9 +736,32 @@ INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id) VALUE
  '$2b$12$tf4rSDYGVmiTckAtyKjQSu2YY0e7Ou3TiDKxzu1T.izb8svBJdor.',  -- almacen123
  (SELECT id FROM roles WHERE codigo = 'ALMACENERO'));
 
+-- Sprint 1: Usuarios para grupo de trabajo
+-- Contraseña: sermul123
+INSERT INTO usuarios (dni, nombre, apellido, password_hash, rol_id) VALUES
+('22334455', 'Pedro', 'Quispe', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'LIDER_MEC')),
+('33445566', 'Luis', 'Mamani', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
+('44556677', 'José', 'Huamán', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
+('55667788', 'Diego', 'Sánchez', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
+('66778899', 'Miguel', 'Torres', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR'));
+
 -- Insertar Parada de ejemplo
 INSERT INTO paradas (codigo, nombre, fecha_inicio, fecha_fin, estado) VALUES
 ('PAR-2026-001', 'Mantenimiento Molino SAG - Mayo 2026', '2026-05-10', NULL, 'Activa');
+
+-- Sprint 1: Grupo de trabajo para pruebas de check-in/out
+INSERT INTO grupos_trabajo (codigo, nombre, parada_id, lider_id, supervisor_id, estado)
+SELECT 'GRP-001', 'Grupo A - Molino SAG', p.id, l.id, s.id, 'Activo'
+FROM paradas p, usuarios l, usuarios s
+WHERE p.codigo = 'PAR-2026-001'
+  AND l.dni = '22334455'
+  AND s.dni = '12345678';
+
+INSERT INTO grupos_integrantes (grupo_id, usuario_id, fecha_ingreso, activo)
+SELECT g.id, u.id, '2026-05-10', true
+FROM grupos_trabajo g, usuarios u
+WHERE g.codigo = 'GRP-001'
+  AND u.dni IN ('22334455', '33445566', '44556677', '55667788', '66778899');
 
 -- Insertar Categorías
 INSERT INTO categorias_materiales (nombre, tipo_general) VALUES
@@ -753,34 +776,68 @@ INSERT INTO categorias_materiales (nombre, tipo_general) VALUES
 -- Insertar catálogo de ejemplo
 INSERT INTO catalogo_materiales 
 (codigo_interno, nombre, categoria_id, tipo_material, costo_reposicion, es_devolutivo) VALUES
-('HER-001', 'Taladro Percutor Bosch GSB 18V', 1, 'Herramienta', 450.00, true),
-('HER-002', 'Amoladora Bosch GWS 18V', 1, 'Herramienta', 380.00, true),
-('HER-003', 'Llave Combinada 13mm', 2, 'Herramienta', 12.50, true),
-('EPP-001', 'Casco de Seguridad MSA V-Gard', 3, 'EPP', 45.00, true),
-('EPP-002', 'Guantes de Nitrilo (par)', 4, 'EPP', 3.50, false),
-('EPP-003', 'Arnés de Seguridad Completo', 6, 'EPP', 250.00, true),
-('CONS-001', 'Tornillos 1/4" x 100 unidades', 7, 'Consumible', 8.00, false);
+('HER-001', 'Taladro Percutor Bosch GSB 18V', 1, 'Herramienta', 850.00, true),
+('HER-002', 'Amoladora Bosch GWS 18V', 1, 'Herramienta', 720.00, true),
+('HER-003', 'Llave Combinada 13mm', 2, 'Herramienta', 45.00, true),
+('HER-004', 'Llave de Impacto Milwaukee M18', 1, 'Herramienta', 1250.00, true),
+('HER-005', 'Esmeril Angular DeWalt 4 1/2"', 1, 'Herramienta', 580.00, true),
+('EPP-001', 'Casco de Seguridad MSA V-Gard', 3, 'EPP_Devolutivo', 120.00, true),
+('EPP-002', 'Guantes de Nitrilo (par)', 4, 'EPP_Consumible', 15.00, false),
+('EPP-003', 'Arnés de Seguridad Completo', 6, 'EPP_Devolutivo', 680.00, true),
+('EPP-004', 'Respirador 3M 6200', 5, 'EPP_Devolutivo', 195.00, true),
+('CONS-001', 'Tornillos 1/4" x 100 unidades', 7, 'Suministro', 28.00, false);
 
 -- Actualizar campos específicos de EPPs
 UPDATE catalogo_materiales SET 
     vida_util_dias = 365,
     requiere_certificacion = true,
-    certificacion_norma = 'ANSI Z89.1'
+    certificacion_norma = 'ANSI Z89.1',
+    requiere_inspeccion = true
 WHERE codigo_interno = 'EPP-001';
 
 UPDATE catalogo_materiales SET 
     vida_util_dias = 180,
     requiere_certificacion = true,
-    certificacion_norma = 'ANSI Z359'
+    certificacion_norma = 'ANSI Z359',
+    requiere_inspeccion = true
 WHERE codigo_interno = 'EPP-003';
+
+UPDATE catalogo_materiales SET 
+    vida_util_dias = 730,
+    requiere_certificacion = true,
+    certificacion_norma = 'NIOSH 42 CFR 84',
+    requiere_inspeccion = true
+WHERE codigo_interno = 'EPP-004';
 
 -- Insertar inventario físico de ejemplo (sin código de barras)
 INSERT INTO inventario_fisico (catalogo_id, estado, ubicacion_fisica, ubicacion_macro, fecha_adquisicion) VALUES
+-- Taladros (HER-001): 2 disponibles, 1 en uso
 ((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'Disponible', 'Estante A-12', 'Mina', '2026-01-15'),
 ((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'Disponible', 'Estante A-12', 'Mina', '2026-01-15'),
 ((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'En_Uso', 'Estante A-12', 'Mina', '2026-01-15'),
+-- Amoladoras (HER-002): 1 disponible, 1 en tránsito
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'Disponible', 'Estante B-04', 'Mina', '2026-03-01'),
 ((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'En_Ciudad', 'Bodega Principal', 'Ciudad', '2026-03-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'En_Transito_Compra', NULL, 'Transito_Compra', '2026-04-20');
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'En_Transito_Compra', NULL, 'Transito_Compra', '2026-04-20'),
+-- Llaves combinadas (HER-003): 3 disponibles
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
+-- Llave de impacto (HER-004): 2 disponibles
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-004'), 'Disponible', 'Estante D-08', 'Mina', '2026-04-01'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-004'), 'Disponible', 'Estante D-08', 'Mina', '2026-04-01'),
+-- Esmeril (HER-005): 1 en Ciudad, 1 disponible
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-005'), 'Disponible', 'Estante B-06', 'Mina', '2026-05-01'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-005'), 'En_Ciudad', 'Bodega Principal', 'Ciudad', '2026-05-01'),
+-- Cascos (EPP-001): 3 disponibles
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
+-- Arneses (EPP-003): 1 disponible
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-003'), 'Disponible', 'Estante F-03', 'Mina', '2026-02-15'),
+-- Respiradores (EPP-004): 2 disponibles
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-004'), 'Disponible', 'Estante G-02', 'Mina', '2026-03-10'),
+((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-004'), 'Disponible', 'Estante G-02', 'Mina', '2026-03-10');
 
 -- Insertar Tipos de Riesgos
 INSERT INTO tipos_riesgos (codigo, nombre, requiere_supervision_ssoma, color_hex) VALUES

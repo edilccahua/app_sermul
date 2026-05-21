@@ -98,7 +98,7 @@ curl http://localhost:80
 |-----|---------|-----|----------|
 | 12345678 | Carlos Rodriguez | Residente | admin123 |
 | 87654321 | Sistema Admin | Administrador | admin123 |
-| 11223344 | Juan Perez | Panolero | almacen123 |
+| 11223344 | Juan Perez | Almacenero | almacen123 |
 
 ### Comandos utiles
 

@@ -22,6 +22,26 @@ const routes = [
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
       },
+      {
+        path: 'catalogo',
+        name: 'Catalogo',
+        component: () => import('@/views/CatalogoView.vue'),
+      },
+      {
+        path: 'inventario',
+        name: 'Inventario',
+        component: () => import('@/views/InventarioView.vue'),
+      },
+      {
+        path: 'paradas',
+        name: 'Paradas',
+        component: () => import('@/views/ParadasView.vue'),
+      },
+      {
+        path: 'historial',
+        name: 'Historial',
+        component: () => import('@/views/HistorialView.vue'),
+      },
     ],
   },
 ]

@@ -14,21 +14,46 @@
       </div>
 
       <!-- Nav -->
-      <nav class="flex-1 py-4">
+      <nav class="flex-1 py-4 flex flex-col gap-1">
+        <!-- Almacén Check-OUT: acción especial, abre sheet -->
         <button
-          v-for="item in navItems"
-          :key="item.label"
-          @click="activeNav = item.label"
+          @click="checkOutOpen = true"
           :class="[
-            'w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors',
-            activeNav === item.label
-              ? 'bg-accent text-accent-foreground'
-              : 'hover:bg-accent/50',
+            'w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors rounded-md mx-1',
+            'hover:bg-accent/50 text-muted-foreground hover:text-foreground',
+          ]"
+        >
+          <ArchiveBoxIcon class="w-5 h-5 flex-shrink-0" />
+          <span v-if="sidebarOpen">Almacén — Salida</span>
+        </button>
+
+        <!-- Almacén Check-IN: devoluciones -->
+        <button
+          @click="checkInOpen = true"
+          :class="[
+            'w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors rounded-md mx-1',
+            'hover:bg-accent/50 text-muted-foreground hover:text-foreground',
+          ]"
+        >
+          <ArrowLeftOnRectangleIcon class="w-5 h-5 flex-shrink-0" />
+          <span v-if="sidebarOpen">Almacén — Entrada</span>
+        </button>
+
+        <!-- Rutas de navegación -->
+        <router-link
+          v-for="item in navItems"
+          :key="item.name"
+          :to="item.path"
+          :class="[
+            'flex items-center gap-3 px-4 py-2 text-sm transition-colors rounded-md mx-1',
+            route.path.startsWith(item.path)
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground',
           ]"
         >
           <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
           <span v-if="sidebarOpen">{{ item.label }}</span>
-        </button>
+        </router-link>
       </nav>
 
       <!-- User -->
@@ -65,18 +90,43 @@
           <Bars3Icon class="w-5 h-5" />
         </button>
 
-        <!-- Short Code Input -->
-        <div class="flex-1 max-w-md">
+        <!-- Short Code Input + Autocomplete -->
+        <div class="flex-1 max-w-md relative">
           <div class="relative">
             <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               ref="shortCodeInput"
               v-model="shortCode"
-              placeholder="Short code (ej: HER-001) - Enter para buscar"
+              placeholder="Buscar por código o nombre..."
               class="pl-9"
               @keyup.enter="handleShortCodeSearch"
-              @focus="shortCodeInput?.select()"
+              @keydown.arrow-down.prevent="sugerenciaIndex = Math.min(sugerenciaIndex + 1, sugerenciasTopbar.length - 1)"
+              @keydown.arrow-up.prevent="sugerenciaIndex = Math.max(sugerenciaIndex - 1, 0)"
+              @keydown.escape="sugerenciasTopbar = []"
+              @focus="onTopbarFocus"
+              @blur="onTopbarBlur"
             />
+          </div>
+          <!-- Dropdown de sugerencias -->
+          <div
+            v-if="sugerenciasTopbar.length > 0 && shortCode.length >= 2"
+            class="absolute top-full left-0 right-0 mt-1 z-50 bg-card border border-border rounded-md shadow-xl overflow-hidden"
+          >
+            <button
+              v-for="(s, idx) in sugerenciasTopbar"
+              :key="s.id"
+              @mousedown.prevent="seleccionarSugerencia(s)"
+              :class="[
+                'w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors',
+                idx === sugerenciaIndex
+                  ? 'bg-primary/10'
+                  : 'hover:bg-muted/30',
+                idx < sugerenciasTopbar.length - 1 ? 'border-b border-border/50' : '',
+              ]"
+            >
+              <code class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{{ s.codigo_interno }}</code>
+              <span class="truncate">{{ s.nombre }}</span>
+            </button>
           </div>
         </div>
 
@@ -95,14 +145,19 @@
     </div>
 
     <!-- CheckOut Sheet -->
-    <CheckOutSheet v-model:open="checkOutOpen" />
+    <CheckOutSheet v-model:open="checkOutOpen" v-model:initial-code="initialCode" />
+    <!-- CheckIn Sheet -->
+    <CheckInSheet v-model:open="checkInOpen" />
+    <!-- Toaster global -->
+    <Toaster />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { catalogoAPI } from '@/api'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -119,29 +174,38 @@ import {
   MagnifyingGlassIcon,
   HomeIcon,
   ArchiveBoxIcon,
+  ArrowLeftOnRectangleIcon,
   CubeIcon,
+  ClipboardDocumentListIcon,
   CalendarIcon,
-  UsersIcon,
-  ShoppingCartIcon,
+  ClockIcon,
 } from '@heroicons/vue/24/outline'
 import CheckOutSheet from '@/components/almacen/CheckOutSheet.vue'
+import CheckInSheet from '@/components/almacen/CheckInSheet.vue'
+import { Toaster } from '@/components/ui/toast'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const sidebarOpen = ref(true)
-const activeNav = ref('Dashboard')
 const shortCode = ref('')
+const initialCode = ref('')
 const shortCodeInput = ref(null)
 const checkOutOpen = ref(false)
+const checkInOpen = ref(false)
 
+const sugerenciasTopbar = ref([])
+const sugerenciaIndex = ref(0)
+let debounceTopbar = null
+
+// Rutas de navegación con router-link (Almacén es acción especial, no ruta)
 const navItems = [
-  { label: 'Dashboard', icon: HomeIcon },
-  { label: 'Pañol', icon: ArchiveBoxIcon },
-  { label: 'Inventario', icon: CubeIcon },
-  { label: 'Paradas', icon: CalendarIcon },
-  { label: 'Grupos', icon: UsersIcon },
-  { label: 'Reservas', icon: ShoppingCartIcon },
+  { label: 'Dashboard', name: 'Dashboard', path: '/app/dashboard', icon: HomeIcon },
+  { label: 'Catálogo', name: 'Catalogo', path: '/app/catalogo', icon: CubeIcon },
+  { label: 'Inventario', name: 'Inventario', path: '/app/inventario', icon: ClipboardDocumentListIcon },
+  { label: 'Paradas', name: 'Paradas', path: '/app/paradas', icon: CalendarIcon },
+  { label: 'Historial', name: 'Historial', path: '/app/historial', icon: ClockIcon },
 ]
 
 const userInitials = computed(() => {
@@ -154,9 +218,49 @@ function handleLogout() {
   router.push('/login')
 }
 
+// ── Topbar: autocomplete con catálogo ──
+watch(shortCode, (val) => {
+  clearTimeout(debounceTopbar)
+  const q = val.trim()
+  if (!q || q.length < 2) {
+    sugerenciasTopbar.value = []
+    sugerenciaIndex.value = 0
+    return
+  }
+  debounceTopbar = setTimeout(async () => {
+    try {
+      const { data } = await catalogoAPI.search(q)
+      sugerenciasTopbar.value = data.slice(0, 5)
+      sugerenciaIndex.value = 0
+    } catch {
+      sugerenciasTopbar.value = []
+    }
+  }, 200)
+})
+
+function seleccionarSugerencia(s) {
+  shortCode.value = s.codigo_interno
+  sugerenciasTopbar.value = []
+  initialCode.value = s.codigo_interno
+  checkOutOpen.value = true
+  shortCode.value = ''
+}
+
+function onTopbarFocus() {
+  shortCodeInput.value?.$el?.select()
+}
+
+function onTopbarBlur() {
+  setTimeout(() => { sugerenciasTopbar.value = [] }, 150)
+}
+
 function handleShortCodeSearch() {
-  if (shortCode.value.trim()) {
+  const code = shortCode.value.trim()
+  if (code) {
+    initialCode.value = code
+    shortCode.value = ''
     checkOutOpen.value = true
+    sugerenciasTopbar.value = []
   }
 }
 
