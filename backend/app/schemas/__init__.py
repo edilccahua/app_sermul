@@ -2,7 +2,7 @@ from .auth import LoginRequest, LoginResponse, TokenResponse
 from .usuario import UsuarioResponse
 from .categoria import CategoriaResponse
 from .catalogo import CatalogoCreate, CatalogoUpdate, CatalogoResponse
-from .inventario import UbicacionUpdate, InventarioResponse
+from .inventario import StockResponse
 from .parada import ParadaCreate, ParadaUpdate, ParadaResponse
 from .historial import HistorialResponse, HistorialFilter
 from .grupo import GrupoResponse
@@ -12,7 +12,7 @@ __all__ = [
     "LoginRequest", "LoginResponse", "TokenResponse", "UsuarioResponse",
     "CategoriaResponse",
     "CatalogoCreate", "CatalogoUpdate", "CatalogoResponse",
-    "UbicacionUpdate", "InventarioResponse",
+    "StockResponse",
     "ParadaCreate", "ParadaUpdate", "ParadaResponse",
     "HistorialResponse", "HistorialFilter",
     "GrupoResponse",

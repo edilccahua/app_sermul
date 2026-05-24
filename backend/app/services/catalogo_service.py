@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..models.catalogo_material import CatalogoMaterial
@@ -72,8 +73,30 @@ class CatalogoService:
             self.db.query(CatalogoMaterial)
             .filter(
                 CatalogoMaterial.activo.is_(True),
-                CatalogoMaterial.nombre.ilike(f"%{term}%"),
+                or_(
+                    CatalogoMaterial.nombre.ilike(f"%{term}%"),
+                    CatalogoMaterial.codigo_interno.ilike(f"%{term}%"),
+                ),
             )
             .order_by(CatalogoMaterial.codigo_interno)
             .all()
         )
+
+    def update_stock(self, catalogo_id: int, field: str, delta: int) -> CatalogoMaterial:
+        valid_fields = {"cant_disponible", "cant_en_uso", "cant_malograda", "cant_perdida"}
+        if field not in valid_fields:
+            raise ValueError(f"Campo inválido: {field}. Válidos: {valid_fields}")
+
+        material = self.get_by_id(catalogo_id)
+        if not material:
+            raise ValueError(f"Material con ID {catalogo_id} no encontrado")
+
+        current = getattr(material, field)
+        nuevo_valor = current + delta
+        if nuevo_valor < 0:
+            raise ValueError(f"{field} no puede ser negativo (actual: {current}, delta: {delta})")
+
+        setattr(material, field, nuevo_valor)
+        self.db.commit()
+        self.db.refresh(material)
+        return material

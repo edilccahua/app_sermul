@@ -2,60 +2,66 @@
   <div class="p-6 space-y-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <CalendarIcon class="w-7 h-7 text-primary" />
-        <h1 class="text-2xl font-bold">Gestión de Paradas</h1>
+        <span class="sap-icon--calendar w-7 h-7 flex items-center justify-center text-[var(--sapButton_Emphasized_Background)]" />
+        <h1 class="text-xl font-bold">Gestión de Paradas</h1>
       </div>
       <button v-if="puedeCrear" @click="abrirModal()"
-        class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors min-h-[44px]">
-        <PlusIcon class="w-4 h-4" />Nueva Parada
+        class="inline-flex items-center gap-2 rounded-sm border border-[var(--sapButton_BorderColor)] bg-[var(--sapButton_Background)] px-3 py-1.5 text-sm text-[var(--sapButton_TextColor)] hover:bg-[var(--sapButton_Hover_Background)] transition-colors">
+        <span class="sap-icon--add w-4 h-4 flex items-center justify-center" />Nueva Parada
       </button>
+    </div>
+
+    <!-- Table Toolbar -->
+    <div class="flex items-center justify-between text-sm text-[var(--sapContent_LabelColor)]">
+      <span>Paradas ({{ paradasStore.items.length }})</span>
     </div>
 
     <div class="rounded-md border border-border overflow-hidden">
       <div v-if="paradasStore.loading" class="p-8 text-center text-muted-foreground">
-        <ArrowPathIcon class="w-6 h-6 mx-auto mb-2 animate-spin" />Cargando paradas...
+        <span class="sap-icon--refresh w-6 h-6 flex items-center justify-center mx-auto mb-2 animate-spin" />Cargando paradas...
       </div>
       <table v-else class="w-full caption-bottom text-sm">
         <thead class="border-b border-border">
           <tr>
-            <th class="h-10 px-3 text-left font-medium text-muted-foreground">Código</th>
-            <th class="h-10 px-3 text-left font-medium text-muted-foreground">Nombre</th>
-            <th class="h-10 px-3 text-left font-medium text-muted-foreground">Inicio</th>
-            <th class="h-10 px-3 text-left font-medium text-muted-foreground">Fin</th>
-            <th class="h-10 px-3 text-left font-medium text-muted-foreground">Estado</th>
-            <th v-if="puedeCrear" class="h-10 px-3"></th>
+            <th class="h-8 px-2 text-left font-medium text-muted-foreground text-xs">Código</th>
+            <th class="h-8 px-2 text-left font-medium text-muted-foreground text-xs">Nombre</th>
+            <th class="h-8 px-2 text-left font-medium text-muted-foreground text-xs">Inicio</th>
+            <th class="h-8 px-2 text-left font-medium text-muted-foreground text-xs">Fin</th>
+            <th class="h-8 px-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
+            <th v-if="puedeCrear" class="h-8 px-2"></th>
           </tr>
         </thead>
         <tbody class="[&_tr:last-child]:border-0">
           <tr v-for="p in paradasStore.items" :key="p.id"
             class="border-b border-border hover:bg-muted/20 transition-colors">
-            <td class="px-3 py-3">
+            <td class="px-2 py-1.5">
               <code class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{{ p.codigo }}</code>
             </td>
-            <td class="px-3 py-3 font-medium">{{ p.nombre }}</td>
-            <td class="px-3 py-3 text-sm text-muted-foreground">{{ formatDate(p.fecha_inicio) }}</td>
-            <td class="px-3 py-3 text-sm text-muted-foreground">{{ p.fecha_fin ? formatDate(p.fecha_fin) : '—' }}</td>
-            <td class="px-3 py-3">
-              <span :class="['inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', badgeEstado(p.estado)]">
+            <td class="px-2 py-1.5 font-medium text-sm">{{ p.nombre }}</td>
+            <td class="px-2 py-1.5 text-sm text-muted-foreground">{{ formatDate(p.fecha_inicio) }}</td>
+            <td class="px-2 py-1.5 text-sm text-muted-foreground">{{ p.fecha_fin ? formatDate(p.fecha_fin) : '—' }}</td>
+            <td class="px-2 py-1.5">
+              <span :class="['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', badgeEstado(p.estado)]">
                 {{ p.estado }}
               </span>
             </td>
-            <td v-if="puedeCrear" class="px-3 py-3">
+            <td v-if="puedeCrear" class="px-2 py-1.5">
               <button @click="abrirModal(p)"
-                class="text-xs text-muted-foreground hover:text-foreground underline">Editar</button>
+                class="text-xs text-[var(--sapButton_TextColor)] hover:underline">Editar</button>
             </td>
           </tr>
           <tr v-if="paradasStore.items.length === 0">
-            <td colspan="6" class="px-3 py-8 text-center text-muted-foreground">No hay paradas registradas</td>
+            <td colspan="6" class="px-3 py-6 text-center text-muted-foreground">No hay paradas registradas</td>
           </tr>
         </tbody>
       </table>
     </div>
 
+
     <!-- Modal -->
     <div v-if="modalAbierto" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="cerrarModal" />
-      <div class="relative z-10 bg-card border border-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div class="relative z-10 bg-card border border-border shadow-[var(--sapContent_Shadow2)] w-full max-w-md mx-4 p-6">
         <h2 class="text-lg font-bold mb-4">{{ editando ? 'Editar Parada' : 'Nueva Parada' }}</h2>
         <form @submit.prevent="guardar" class="space-y-4">
           <div>
@@ -97,9 +103,9 @@
           </div>
           <div class="flex gap-3 pt-2">
             <button type="button" @click="cerrarModal"
-              class="flex-1 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors min-h-[44px]">Cancelar</button>
+              class="flex-1 rounded-sm border border-[var(--sapButton_BorderColor)] bg-[var(--sapButton_Background)] px-4 py-2 text-sm text-[var(--sapButton_TextColor)] hover:bg-[var(--sapButton_Hover_Background)] transition-colors min-h-[44px]">Cancelar</button>
             <button type="submit" :disabled="guardando"
-              class="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-h-[44px]">
+              class="flex-1 rounded-sm bg-[var(--sapButton_Emphasized_Background)] px-4 py-2 text-sm font-medium text-[var(--sapButton_Emphasized_TextColor)] hover:bg-[var(--sapButton_Emphasized_Hover_Background)] disabled:opacity-50 min-h-[44px]">
               {{ guardando ? 'Guardando...' : 'Guardar' }}
             </button>
           </div>
@@ -114,7 +120,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useParadasStore } from '@/stores/paradas'
 import { useToast } from '@/components/ui/toast'
-import { CalendarIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+
 
 const authStore = useAuthStore()
 const paradasStore = useParadasStore()
@@ -129,9 +135,9 @@ const puedeCrear = computed(() => ['RESIDENTE', 'ADMIN'].includes(authStore.rolC
 
 function badgeEstado(estado) {
   return {
-    Planificada: 'bg-slate-500/15 text-slate-400 border border-slate-500/30',
-    Activa: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
-    Finalizada: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+    Planificada: 'bg-[var(--sapNeutralBackground)] text-[var(--sapNeutralTextColor)] border border-[var(--sapNeutralBorderColor)]',
+    Activa: 'bg-[var(--sapSuccessBackground)] text-[var(--sapPositiveTextColor)] border border-[var(--sapSuccessBorderColor)]',
+    Finalizada: 'bg-[var(--sapInformationBackground)] text-[var(--sapInformationTextColor)] border border-[var(--sapInformationBorderColor)]',
   }[estado] || 'bg-muted text-muted-foreground'
 }
 

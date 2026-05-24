@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 
 class GrupoTrabajo(Base):
     __tablename__ = "grupos_trabajo"
+    __table_args__ = (
+        UniqueConstraint("codigo", "parada_id", name="uq_grupo_codigo_parada"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     codigo: Mapped[str] = mapped_column(String(20), nullable=False)

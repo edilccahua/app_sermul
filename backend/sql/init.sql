@@ -127,11 +127,11 @@ CREATE TABLE categorias_materiales (
 
 CREATE TABLE catalogo_materiales (
     id SERIAL PRIMARY KEY,
-    codigo_interno VARCHAR(15) UNIQUE NOT NULL,  -- Short code mnemotécnico: HER-001, EPP-023
+    codigo_interno VARCHAR(15) UNIQUE NOT NULL,  -- Short code mnemotécnico TIPO-MARCA: TALELC-BOSCH, AMOLAN-BOSCH
     nombre VARCHAR(200) NOT NULL,
     descripcion TEXT,
     categoria_id INT NOT NULL REFERENCES categorias_materiales(id),
-    tipo_material VARCHAR(20) NOT NULL,
+    tipo_material VARCHAR(30) NOT NULL,
     
     -- Campos económicos
     costo_reposicion DECIMAL(10, 2),
@@ -148,6 +148,13 @@ CREATE TABLE catalogo_materiales (
     es_devolutivo BOOLEAN NOT NULL,
     stock_minimo INT,
     unidad_medida VARCHAR(20),
+
+    -- Contadores de stock (Sprint 2.8: modelo por cantidad)
+    cantidad INT NOT NULL DEFAULT 0,
+    cant_disponible INT NOT NULL DEFAULT 0,
+    cant_en_uso INT NOT NULL DEFAULT 0,
+    cant_malograda INT NOT NULL DEFAULT 0,
+    cant_perdida INT NOT NULL DEFAULT 0,
     
     -- Metadata
     imagen_url VARCHAR(500),
@@ -155,7 +162,7 @@ CREATE TABLE catalogo_materiales (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT chk_tipo_material CHECK (tipo_material IN ('Herramienta', 'EPP_Devolutivo', 'EPP_Consumible', 'Suministro'))
+    CONSTRAINT chk_tipo_material CHECK (tipo_material IN ('HERRAMIENTA_DEVOLUTIVA', 'EPP_DEVOLUTIVO', 'EPP_CONSUMIBLE', 'CONSUMIBLE'))
 );
 
 CREATE INDEX idx_catalogo_codigo ON catalogo_materiales(codigo_interno);
@@ -164,43 +171,10 @@ CREATE INDEX idx_catalogo_categoria ON catalogo_materiales(categoria_id);
 CREATE INDEX idx_catalogo_activo ON catalogo_materiales(activo) WHERE activo = true;
 
 -- ============================================================================
--- SECCIÓN E: INVENTARIO FÍSICO
+-- SECCIÓN E: INVENTARIO FÍSICO — ELIMINADO en Sprint 2.8 (modelo por cantidad)
 -- ============================================================================
-
-CREATE TABLE inventario_fisico (
-    id SERIAL PRIMARY KEY,
-    codigo_barras VARCHAR(50) UNIQUE,  -- NULLABLE en v1. Se llenará en fase futura con lector de barras
-    catalogo_id INT NOT NULL REFERENCES catalogo_materiales(id),
-    numero_serie VARCHAR(100),
-    
-    -- Estado y ubicación
-    estado VARCHAR(20) NOT NULL DEFAULT 'Disponible',
-    ubicacion_fisica VARCHAR(100),  -- Estante A-12, Casillero B-05
-    ubicacion_macro VARCHAR(20) NOT NULL DEFAULT 'Ciudad',  -- Ciudad, Transito_Compra, Mina
-    
-    -- Fechas de control
-    fecha_adquisicion DATE,
-    fecha_ultima_inspeccion DATE,
-    proxima_inspeccion DATE,
-    
-    -- Observaciones
-    observaciones TEXT,
-    
-    -- Metadata
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT chk_estado_inventario CHECK (estado IN (
-        'Disponible', 'En_Uso', 'Malograda', 'En_Mantenimiento', 
-        'Perdida', 'Baja', 'En_Ciudad', 'En_Transito_Compra'
-    )),
-    CONSTRAINT chk_ubicacion_macro CHECK (ubicacion_macro IN ('Ciudad', 'Transito_Compra', 'Mina'))
-);
-
-CREATE INDEX idx_inventario_catalogo ON inventario_fisico(catalogo_id);
-CREATE INDEX idx_inventario_estado ON inventario_fisico(estado);
-CREATE INDEX idx_inventario_ubicacion_macro ON inventario_fisico(ubicacion_macro);
-CREATE INDEX idx_inventario_disponible ON inventario_fisico(catalogo_id, estado) WHERE estado = 'Disponible';
+-- La tabla inventario_fisico fue eliminada. El control de stock ahora se hace
+-- mediante contadores en catalogo_materiales (cant_disponible, cant_en_uso, etc.)
 
 -- ============================================================================
 -- SECCIÓN F: KITS (BOM) -- [FUTURO - Urgente Fase 2]
@@ -269,7 +243,6 @@ CREATE TABLE reservas_detalle (
     reserva_id INT NOT NULL REFERENCES reservas(id) ON DELETE CASCADE,
     catalogo_id INT NOT NULL REFERENCES catalogo_materiales(id),
     cantidad_solicitada INT NOT NULL DEFAULT 1,
-    inventario_fisico_ids JSONB,
     cantidad_despachada INT DEFAULT 0,
     CONSTRAINT chk_cantidad_solicitada CHECK (cantidad_solicitada > 0)
 );
@@ -291,10 +264,9 @@ CREATE TABLE historial_movimientos (
     tipo_movimiento VARCHAR(30) NOT NULL,
     
     -- Referencias (solo catalogo_id y parada_id son NOT NULL en v1)
-    inventario_fisico_id INT REFERENCES inventario_fisico(id),  -- NULLABLE v1
     catalogo_id INT NOT NULL REFERENCES catalogo_materiales(id),
     parada_id INT NOT NULL REFERENCES paradas(id),
-    cantidad INT DEFAULT 1,
+    cantidad INT NOT NULL DEFAULT 1,
     
     -- Actores (NULLABLE en v1)
     usuario_ejecuta_id INT REFERENCES usuarios(id),
@@ -309,8 +281,10 @@ CREATE TABLE historial_movimientos (
     estado_origen VARCHAR(20),
     estado_destino VARCHAR(20),
     
-    -- Observaciones
+    -- Observaciones (Sprint 2.8)
     observaciones TEXT,
+    observacion_entrega TEXT,
+    observacion_recepcion TEXT,
     
     CONSTRAINT chk_tipo_movimiento CHECK (tipo_movimiento IN (
         'Entrega', 'Devolucion', 'Perdida', 'Paso_Mantenimiento', 
@@ -462,65 +436,53 @@ CREATE TRIGGER update_grupos_updated_at BEFORE UPDATE ON grupos_trabajo
 CREATE TRIGGER update_catalogo_updated_at BEFORE UPDATE ON catalogo_materiales
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_inventario_updated_at BEFORE UPDATE ON inventario_fisico
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_tareas_updated_at BEFORE UPDATE ON tareas
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Trigger: Validar que solo herramientas/EPPs devolutivos tengan inventario_fisico
-CREATE OR REPLACE FUNCTION validar_devolutivo()
-RETURNS TRIGGER AS $$
-DECLARE
-    es_dev BOOLEAN;
-BEGIN
-    SELECT es_devolutivo INTO es_dev FROM catalogo_materiales WHERE id = NEW.catalogo_id;
-    
-    IF NOT es_dev THEN
-        RAISE EXCEPTION 'Solo materiales devolutivos pueden tener inventario físico individual';
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER check_devolutivo BEFORE INSERT ON inventario_fisico
-    FOR EACH ROW EXECUTE FUNCTION validar_devolutivo();
-
 -- Función: Auto-marcar pérdidas 3 días después del cierre de parada
+-- Sprint 2.8: ahora opera sobre contadores de catalogo_materiales en vez de inventario_fisico
 -- (Se ejecuta vía scheduled task en backend, no como trigger automático)
 -- CORREGIDO: sintaxis UPDATE...FROM válida para PostgreSQL + inserta registro en historial
 CREATE OR REPLACE FUNCTION marcar_perdidas_cierre_parada(p_parada_id INT)
-RETURNS TABLE(herramienta_id INT, catalogo_nombre VARCHAR, grupo_nombre VARCHAR, costo DECIMAL) AS $$
+RETURNS TABLE(catalogo_id INT, catalogo_nombre VARCHAR, grupo_nombre VARCHAR, cantidad_perdida INT, costo DECIMAL) AS $$
 BEGIN
     RETURN QUERY
-    WITH perdidas AS (
-        UPDATE inventario_fisico i
-        SET estado = 'Perdida',
-            updated_at = CURRENT_TIMESTAMP
-        FROM historial_movimientos hm,
-             catalogo_materiales cm
-        WHERE hm.inventario_fisico_id = i.id
-            AND i.catalogo_id = cm.id
-            AND hm.parada_id = p_parada_id
-            AND i.estado = 'En_Uso'
+    WITH perdidas_agrupadas AS (
+        -- Encontrar materiales con entregas a esta parada sin devolución posterior
+        SELECT 
+            hm.catalogo_id,
+            hm.grupo_destino_id,
+            SUM(hm.cantidad) AS cant_pendiente
+        FROM historial_movimientos hm
+        WHERE hm.parada_id = p_parada_id
             AND hm.tipo_movimiento = 'Entrega'
-            AND hm.timestamp = (
-                SELECT MAX(hm2.timestamp)
-                FROM historial_movimientos hm2
-                WHERE hm2.inventario_fisico_id = i.id
+            AND NOT EXISTS (
+                SELECT 1 FROM historial_movimientos hm2
+                WHERE hm2.catalogo_id = hm.catalogo_id
+                    AND hm2.grupo_destino_id = hm.grupo_destino_id
+                    AND hm2.tipo_movimiento IN ('Devolucion', 'Perdida', 'Paso_Mantenimiento')
+                    AND hm2.timestamp > hm.timestamp
             )
-        RETURNING i.id, i.catalogo_id, cm.nombre AS cat_nombre, cm.costo_reposicion, hm.grupo_destino_id
+        GROUP BY hm.catalogo_id, hm.grupo_destino_id
+        HAVING SUM(hm.cantidad) > 0
     ),
-    -- Insertar registro de auditoría en historial por cada herramienta marcada como perdida
+    actualizar_contadores AS (
+        UPDATE catalogo_materiales cm
+        SET cant_en_uso = cm.cant_en_uso - pa.cant_pendiente,
+            cant_perdida = cm.cant_perdida + pa.cant_pendiente,
+            updated_at = CURRENT_TIMESTAMP
+        FROM perdidas_agrupadas pa
+        WHERE cm.id = pa.catalogo_id
+        RETURNING cm.id, cm.nombre, cm.costo_reposicion, pa.cant_pendiente, pa.grupo_destino_id
+    ),
     registro_perdida AS (
-        INSERT INTO historial_movimientos (tipo_movimiento, inventario_fisico_id, catalogo_id, parada_id, grupo_destino_id, estado_origen, estado_destino, observaciones)
-        SELECT 'Perdida', p.id, p.catalogo_id, p_parada_id, p.grupo_destino_id, 'En_Uso', 'Perdida', 'Auto-marcado por cierre de parada (+3 días)'
-        FROM perdidas p
+        INSERT INTO historial_movimientos (tipo_movimiento, catalogo_id, parada_id, grupo_destino_id, cantidad, estado_origen, estado_destino, observaciones)
+        SELECT 'Perdida', ac.id, p_parada_id, ac.grupo_destino_id, ac.cant_pendiente, 'En_Uso', 'Perdida', 'Auto-marcado por cierre de parada (+3 días)'
+        FROM actualizar_contadores ac
     )
-    SELECT p.id, p.cat_nombre, g.nombre, p.costo_reposicion
-    FROM perdidas p
-    LEFT JOIN grupos_trabajo g ON g.id = p.grupo_destino_id;
+    SELECT ac.id, ac.nombre, g.nombre, ac.cant_pendiente, ac.costo_reposicion
+    FROM actualizar_contadores ac
+    LEFT JOIN grupos_trabajo g ON g.id = ac.grupo_destino_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -528,119 +490,121 @@ $$ LANGUAGE plpgsql;
 -- SECCIÓN L: VISTAS ÚTILES
 -- ============================================================================
 
--- Vista: Inventario con detalles del catálogo
-CREATE VIEW v_inventario_detallado AS
+-- Vista: Stock de materiales (Sprint 2.8: reemplaza v_inventario_detallado)
+CREATE VIEW v_stock_materiales AS
 SELECT 
-    i.id,
-    COALESCE(i.codigo_barras, 'SIN-BARRA-' || i.id::TEXT) AS identificador,
-    i.estado,
-    i.ubicacion_fisica,
-    i.ubicacion_macro,
-    c.codigo_interno AS short_code,
-    c.nombre,
-    c.tipo_material,
+    cm.id,
+    cm.codigo_interno,
+    cm.nombre,
     cat.nombre AS categoria,
-    c.costo_reposicion,
-    i.fecha_adquisicion,
-    i.fecha_ultima_inspeccion
-FROM inventario_fisico i
-JOIN catalogo_materiales c ON i.catalogo_id = c.id
-JOIN categorias_materiales cat ON c.categoria_id = cat.id;
+    cm.tipo_material,
+    cm.costo_reposicion,
+    cm.moneda,
+    cm.cantidad,
+    cm.cant_disponible,
+    cm.cant_en_uso,
+    cm.cant_malograda,
+    cm.cant_perdida
+FROM catalogo_materiales cm
+JOIN categorias_materiales cat ON cm.categoria_id = cat.id;
 
--- Vista: Herramientas actualmente en uso por grupo
--- CORREGIDO: usa MAX(timestamp) en lugar de MAX(id) para orden cronológico
+-- Vista: Herramientas en uso por grupo (Sprint 2.8: sin inventario_fisico)
 CREATE VIEW v_herramientas_en_uso AS
 SELECT 
     g.id AS grupo_id,
-    g.nombre AS grupo_nombre,
+    g.codigo AS codigo_grupo,
+    g.nombre AS nombre_grupo,
     p.id AS parada_id,
     p.nombre AS parada_nombre,
-    i.id AS inventario_id,
-    c.codigo_interno AS short_code,
-    c.nombre AS herramienta,
-    c.costo_reposicion,
-    h.timestamp AS fecha_entrega,
-    EXTRACT(DAY FROM (CURRENT_TIMESTAMP - h.timestamp)) AS dias_en_uso
+    cm.id AS catalogo_id,
+    cm.codigo_interno,
+    cm.nombre AS nombre_herramienta,
+    cm.costo_reposicion,
+    SUM(h.cantidad) AS cantidad_en_uso,
+    MAX(h.timestamp) AS ultima_entrega,
+    EXTRACT(DAY FROM NOW() - MAX(h.timestamp)) AS dias_en_uso
 FROM historial_movimientos h
-JOIN inventario_fisico i ON h.inventario_fisico_id = i.id
-JOIN catalogo_materiales c ON i.catalogo_id = c.id
+JOIN catalogo_materiales cm ON h.catalogo_id = cm.id
 JOIN grupos_trabajo g ON h.grupo_destino_id = g.id
 JOIN paradas p ON h.parada_id = p.id
-WHERE i.estado = 'En_Uso'
-    AND h.tipo_movimiento = 'Entrega'
-    AND h.timestamp = (
-        SELECT MAX(hm2.timestamp)
-        FROM historial_movimientos hm2 
-        WHERE hm2.inventario_fisico_id = i.id
-    );
+WHERE h.tipo_movimiento = 'Entrega'
+  AND NOT EXISTS (
+      SELECT 1 FROM historial_movimientos h2
+      WHERE h2.catalogo_id = h.catalogo_id
+        AND h2.grupo_destino_id = h.grupo_destino_id
+        AND h2.tipo_movimiento IN ('Devolucion', 'Perdida', 'Paso_Mantenimiento')
+        AND h2.timestamp > h.timestamp
+  )
+GROUP BY g.id, g.codigo, g.nombre, p.id, p.nombre, cm.id, cm.codigo_interno, cm.nombre, cm.costo_reposicion
+HAVING SUM(h.cantidad) > 0;
 
--- Vista: Dashboard de métricas para residente (solo devolutivas)
+-- Vista: Dashboard de métricas (Sprint 2.8: desde catalogo_materiales)
 CREATE VIEW v_dashboard_metricas AS
-SELECT 
-    COUNT(*) FILTER (WHERE estado = 'Disponible') AS total_disponibles,
-    COUNT(*) FILTER (WHERE estado = 'En_Uso') AS total_en_uso,
-    COUNT(*) FILTER (WHERE estado = 'Malograda') AS total_malogradas,
-    COUNT(*) FILTER (WHERE estado = 'En_Mantenimiento') AS total_en_mantenimiento,
-    COUNT(*) FILTER (WHERE estado = 'Perdida') AS total_perdidas,
-    COUNT(*) FILTER (WHERE estado = 'Baja') AS total_bajas,
-    SUM(c.costo_reposicion) FILTER (WHERE i.estado = 'Perdida') AS costo_perdidas,
-    SUM(c.costo_reposicion) FILTER (WHERE i.estado = 'En_Uso') AS costo_en_uso
-FROM inventario_fisico i
-JOIN catalogo_materiales c ON i.catalogo_id = c.id;
+SELECT
+    COUNT(*) FILTER (WHERE cm.tipo_material IN ('HERRAMIENTA_DEVOLUTIVA', 'EPP_DEVOLUTIVO')) AS total_devolutivos,
+    SUM(cm.cant_disponible) AS disponibles,
+    SUM(cm.cant_en_uso) AS en_uso,
+    SUM(cm.cant_malograda) AS malogradas,
+    SUM(cm.cant_perdida) AS perdidas,
+    SUM(cm.cant_perdida * cm.costo_reposicion) AS costo_total_perdidas,
+    SUM(cm.cantidad * cm.costo_reposicion) AS costo_total_inventario
+FROM catalogo_materiales cm;
 
 -- Vista: Pendientes de cierre por parada activa
 CREATE VIEW v_pendientes_cierre_parada AS
 SELECT 
     p.id AS parada_id,
+    p.codigo AS codigo_parada,
     p.nombre AS parada_nombre,
     p.fecha_fin AS parada_fecha_fin,
     g.id AS grupo_id,
     g.nombre AS grupo_nombre,
-    COUNT(i.id) AS herramientas_pendientes,
-    SUM(c.costo_reposicion) AS costo_pendiente,
+    cm.id AS catalogo_id,
+    cm.codigo_interno,
+    cm.nombre AS nombre_herramienta,
+    SUM(h.cantidad) AS cantidad_pendiente,
+    MAX(h.timestamp) AS ultima_entrega,
+    EXTRACT(DAY FROM NOW() - MAX(h.timestamp)) AS dias_en_uso,
     CASE 
         WHEN p.fecha_fin IS NOT NULL AND CURRENT_DATE > p.fecha_fin + INTERVAL '3 days' 
         THEN 'VENCIDO' 
         ELSE 'PENDIENTE' 
-    END AS estado_cierre
+    END AS estado_vencimiento
 FROM paradas p
 JOIN historial_movimientos h ON h.parada_id = p.id
-JOIN inventario_fisico i ON h.inventario_fisico_id = i.id
-JOIN catalogo_materiales c ON i.catalogo_id = c.id
+JOIN catalogo_materiales cm ON h.catalogo_id = cm.id
 JOIN grupos_trabajo g ON h.grupo_destino_id = g.id
-WHERE i.estado = 'En_Uso'
-    AND h.tipo_movimiento = 'Entrega'
-    AND h.timestamp = (
-        SELECT MAX(hm2.timestamp)
-        FROM historial_movimientos hm2 
-        WHERE hm2.inventario_fisico_id = i.id
+WHERE h.tipo_movimiento = 'Entrega'
+    AND p.estado IN ('Activa', 'Finalizada')
+    AND NOT EXISTS (
+        SELECT 1 FROM historial_movimientos h2
+        WHERE h2.catalogo_id = h.catalogo_id
+            AND h2.grupo_destino_id = h.grupo_destino_id
+            AND h2.tipo_movimiento IN ('Devolucion', 'Perdida', 'Paso_Mantenimiento')
+            AND h2.timestamp > h.timestamp
     )
-GROUP BY p.id, p.nombre, p.fecha_fin, g.id, g.nombre;
+GROUP BY p.id, p.codigo, p.nombre, p.fecha_fin, g.id, g.nombre, cm.id, cm.codigo_interno, cm.nombre;
 
 -- Vista: Pérdidas por parada
 CREATE VIEW v_perdidas_por_parada AS
 SELECT 
     p.id AS parada_id,
-    p.nombre AS parada_nombre,
-    g.id AS grupo_id,
-    g.nombre AS grupo_nombre,
-    i.id AS inventario_id,
-    c.codigo_interno AS short_code,
-    c.nombre AS herramienta,
-    c.costo_reposicion,
-    h.timestamp AS fecha_perdida
+    p.codigo AS codigo_parada,
+    p.nombre AS nombre_parada,
+    cm.id AS catalogo_id,
+    cm.codigo_interno,
+    cm.nombre AS nombre_herramienta,
+    cm.costo_reposicion,
+    SUM(h.cantidad) AS cantidad_perdida,
+    SUM(h.cantidad * cm.costo_reposicion) AS costo_total,
+    g.nombre AS nombre_grupo,
+    g.id AS grupo_id
 FROM historial_movimientos h
-JOIN inventario_fisico i ON h.inventario_fisico_id = i.id
-JOIN catalogo_materiales c ON i.catalogo_id = c.id
+JOIN catalogo_materiales cm ON h.catalogo_id = cm.id
 JOIN paradas p ON h.parada_id = p.id
 LEFT JOIN grupos_trabajo g ON h.grupo_destino_id = g.id
-WHERE i.estado = 'Perdida'
-    AND h.tipo_movimiento IN ('Perdida', 'Baja')
-    AND h.timestamp = (
-        SELECT MAX(hm2.timestamp)
-        FROM historial_movimientos hm2 
-        WHERE hm2.inventario_fisico_id = i.id
-    );
+WHERE h.tipo_movimiento = 'Perdida'
+GROUP BY p.id, p.codigo, p.nombre, cm.id, cm.codigo_interno, cm.nombre, cm.costo_reposicion, g.nombre, g.id;
 
 -- ============================================================================
 -- SECCIÓN M: DATOS SEMILLA
@@ -736,108 +700,23 @@ INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id) VALUE
  '$2b$12$tf4rSDYGVmiTckAtyKjQSu2YY0e7Ou3TiDKxzu1T.izb8svBJdor.',  -- almacen123
  (SELECT id FROM roles WHERE codigo = 'ALMACENERO'));
 
--- Sprint 1: Usuarios para grupo de trabajo
--- Contraseña: sermul123
-INSERT INTO usuarios (dni, nombre, apellido, password_hash, rol_id) VALUES
-('22334455', 'Pedro', 'Quispe', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'LIDER_MEC')),
-('33445566', 'Luis', 'Mamani', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
-('44556677', 'José', 'Huamán', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
-('55667788', 'Diego', 'Sánchez', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR')),
-('66778899', 'Miguel', 'Torres', '$2b$12$j5MKNKdPemW0vNlsvZ.S1udemcRfIx4/tjWm0rurx.GmzCE778tBe', (SELECT id FROM roles WHERE codigo = 'TRABAJADOR'));
-
--- Insertar Parada de ejemplo
-INSERT INTO paradas (codigo, nombre, fecha_inicio, fecha_fin, estado) VALUES
-('PAR-2026-001', 'Mantenimiento Molino SAG - Mayo 2026', '2026-05-10', NULL, 'Activa');
-
--- Sprint 1: Grupo de trabajo para pruebas de check-in/out
-INSERT INTO grupos_trabajo (codigo, nombre, parada_id, lider_id, supervisor_id, estado)
-SELECT 'GRP-001', 'Grupo A - Molino SAG', p.id, l.id, s.id, 'Activo'
-FROM paradas p, usuarios l, usuarios s
-WHERE p.codigo = 'PAR-2026-001'
-  AND l.dni = '22334455'
-  AND s.dni = '12345678';
-
-INSERT INTO grupos_integrantes (grupo_id, usuario_id, fecha_ingreso, activo)
-SELECT g.id, u.id, '2026-05-10', true
-FROM grupos_trabajo g, usuarios u
-WHERE g.codigo = 'GRP-001'
-  AND u.dni IN ('22334455', '33445566', '44556677', '55667788', '66778899');
+-- ============================================================================
+-- DATOS SEMILLA — Estructura organizacional (no sensible)
+-- Usuarios, catálogo, inventario y movimientos → seeds_desarrollo.sql
+-- ============================================================================
 
 -- Insertar Categorías
 INSERT INTO categorias_materiales (nombre, tipo_general) VALUES
 ('Herramientas Eléctricas', 'Herramienta'),
 ('Herramientas Manuales', 'Herramienta'),
+('Herramientas Neumáticas', 'Herramienta'),
+('Herramientas Hidráulicas', 'Herramienta'),
+('Equipos de Izaje', 'Herramienta'),
 ('EPP - Protección de Cabeza', 'EPP'),
 ('EPP - Protección de Manos', 'EPP'),
 ('EPP - Protección Respiratoria', 'EPP'),
 ('EPP - Trabajo en Altura', 'EPP'),
 ('Consumibles Generales', 'Consumible');
-
--- Insertar catálogo de ejemplo
-INSERT INTO catalogo_materiales 
-(codigo_interno, nombre, categoria_id, tipo_material, costo_reposicion, es_devolutivo) VALUES
-('HER-001', 'Taladro Percutor Bosch GSB 18V', 1, 'Herramienta', 850.00, true),
-('HER-002', 'Amoladora Bosch GWS 18V', 1, 'Herramienta', 720.00, true),
-('HER-003', 'Llave Combinada 13mm', 2, 'Herramienta', 45.00, true),
-('HER-004', 'Llave de Impacto Milwaukee M18', 1, 'Herramienta', 1250.00, true),
-('HER-005', 'Esmeril Angular DeWalt 4 1/2"', 1, 'Herramienta', 580.00, true),
-('EPP-001', 'Casco de Seguridad MSA V-Gard', 3, 'EPP_Devolutivo', 120.00, true),
-('EPP-002', 'Guantes de Nitrilo (par)', 4, 'EPP_Consumible', 15.00, false),
-('EPP-003', 'Arnés de Seguridad Completo', 6, 'EPP_Devolutivo', 680.00, true),
-('EPP-004', 'Respirador 3M 6200', 5, 'EPP_Devolutivo', 195.00, true),
-('CONS-001', 'Tornillos 1/4" x 100 unidades', 7, 'Suministro', 28.00, false);
-
--- Actualizar campos específicos de EPPs
-UPDATE catalogo_materiales SET 
-    vida_util_dias = 365,
-    requiere_certificacion = true,
-    certificacion_norma = 'ANSI Z89.1',
-    requiere_inspeccion = true
-WHERE codigo_interno = 'EPP-001';
-
-UPDATE catalogo_materiales SET 
-    vida_util_dias = 180,
-    requiere_certificacion = true,
-    certificacion_norma = 'ANSI Z359',
-    requiere_inspeccion = true
-WHERE codigo_interno = 'EPP-003';
-
-UPDATE catalogo_materiales SET 
-    vida_util_dias = 730,
-    requiere_certificacion = true,
-    certificacion_norma = 'NIOSH 42 CFR 84',
-    requiere_inspeccion = true
-WHERE codigo_interno = 'EPP-004';
-
--- Insertar inventario físico de ejemplo (sin código de barras)
-INSERT INTO inventario_fisico (catalogo_id, estado, ubicacion_fisica, ubicacion_macro, fecha_adquisicion) VALUES
--- Taladros (HER-001): 2 disponibles, 1 en uso
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'Disponible', 'Estante A-12', 'Mina', '2026-01-15'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'Disponible', 'Estante A-12', 'Mina', '2026-01-15'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-001'), 'En_Uso', 'Estante A-12', 'Mina', '2026-01-15'),
--- Amoladoras (HER-002): 1 disponible, 1 en tránsito
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'Disponible', 'Estante B-04', 'Mina', '2026-03-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'En_Ciudad', 'Bodega Principal', 'Ciudad', '2026-03-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-002'), 'En_Transito_Compra', NULL, 'Transito_Compra', '2026-04-20'),
--- Llaves combinadas (HER-003): 3 disponibles
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-003'), 'Disponible', 'Gaveta C-01', 'Mina', '2026-02-10'),
--- Llave de impacto (HER-004): 2 disponibles
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-004'), 'Disponible', 'Estante D-08', 'Mina', '2026-04-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-004'), 'Disponible', 'Estante D-08', 'Mina', '2026-04-01'),
--- Esmeril (HER-005): 1 en Ciudad, 1 disponible
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-005'), 'Disponible', 'Estante B-06', 'Mina', '2026-05-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'HER-005'), 'En_Ciudad', 'Bodega Principal', 'Ciudad', '2026-05-01'),
--- Cascos (EPP-001): 3 disponibles
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-001'), 'Disponible', 'Estante E-01', 'Mina', '2026-01-01'),
--- Arneses (EPP-003): 1 disponible
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-003'), 'Disponible', 'Estante F-03', 'Mina', '2026-02-15'),
--- Respiradores (EPP-004): 2 disponibles
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-004'), 'Disponible', 'Estante G-02', 'Mina', '2026-03-10'),
-((SELECT id FROM catalogo_materiales WHERE codigo_interno = 'EPP-004'), 'Disponible', 'Estante G-02', 'Mina', '2026-03-10');
 
 -- Insertar Tipos de Riesgos
 INSERT INTO tipos_riesgos (codigo, nombre, requiere_supervision_ssoma, color_hex) VALUES
@@ -863,8 +742,6 @@ INSERT INTO petars (codigo, nombre, tipo_riesgo_id, version, fecha_actualizacion
 -- ============================================================================
 
 COMMENT ON TABLE paradas IS 'Entidad principal. Agrupa toda la actividad de un mantenimiento programado.';
-COMMENT ON TABLE historial_movimientos IS 'Log de movimientos. Flexible en v1 (FKs opcionales). Uso de particionamiento por año.';
-COMMENT ON COLUMN inventario_fisico.codigo_barras IS 'NULLABLE en v1. Se llenará en fase futura con lectores de código de barras.';
-COMMENT ON COLUMN inventario_fisico.ubicacion_macro IS 'Ubicación logística: Ciudad, Transito_Compra, Mina.';
-COMMENT ON COLUMN catalogo_materiales.codigo_interno IS 'Short code mnemotécnico para digitación manual rápida (máx 15 caracteres).';
-COMMENT ON COLUMN catalogo_materiales.es_devolutivo IS 'true=se controla individualmente, false=se entrega a granel sin inventario físico.';
+COMMENT ON TABLE historial_movimientos IS 'Log de movimientos. Sprint 2.8: control por cantidad, sin inventario_fisico. Particionado por año.';
+COMMENT ON COLUMN catalogo_materiales.codigo_interno IS 'Short code formato TIPO-MARCA para digitación manual rápida (máx 15 caracteres).';
+COMMENT ON COLUMN catalogo_materiales.es_devolutivo IS 'true=herramienta/EPP que se entrega y devuelve, false=consumible de uso único.';

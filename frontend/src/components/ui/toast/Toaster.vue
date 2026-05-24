@@ -9,9 +9,9 @@
           'flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm',
           'transition-all duration-300',
           t.variant === 'success'
-            ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-100'
-            : t.variant === 'error'
-            ? 'bg-rose-950/90 border-rose-500/40 text-rose-100'
+            ? 'bg-[var(--sapSuccessBackground)] border border-[var(--sapSuccessBorderColor)] text-[var(--sapPositiveTextColor)]'
+            : toastVariant === 'error'
+            ? 'bg-[var(--sapErrorBackground)] border border-[var(--sapErrorBorderColor)] text-[var(--sapNegativeTextColor)]'
             : 'bg-card border-border text-foreground',
         ]"
       >

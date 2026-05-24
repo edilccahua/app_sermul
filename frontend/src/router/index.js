@@ -20,7 +20,7 @@ const routes = [
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/Dashboard.vue'),
+        component: () => import('@/views/DashboardResidenteView.vue'),
       },
       {
         path: 'catalogo',
@@ -28,9 +28,13 @@ const routes = [
         component: () => import('@/views/CatalogoView.vue'),
       },
       {
+        path: 'stock',
+        name: 'Stock',
+        component: () => import('@/views/StockView.vue'),
+      },
+      {
         path: 'inventario',
-        name: 'Inventario',
-        component: () => import('@/views/InventarioView.vue'),
+        redirect: 'stock',
       },
       {
         path: 'paradas',
@@ -41,6 +45,55 @@ const routes = [
         path: 'historial',
         name: 'Historial',
         component: () => import('@/views/HistorialView.vue'),
+      },
+      // ── Sprint 2: Almacén Full-Page ──────────────────────────────────────────
+      {
+        path: 'almacen/salida',
+        name: 'CheckOut',
+        component: () => import('@/views/CheckOutView.vue'),
+      },
+      {
+        path: 'almacen/entrada',
+        name: 'CheckIn',
+        component: () => import('@/views/CheckInView.vue'),
+      },
+      // ── Sprint 2: Herramienta Detalle ────────────────────────────────────────
+      {
+        path: 'herramienta/:id',
+        name: 'HerramientaDetalle',
+        component: () => import('@/views/HerramientaDetalleView.vue'),
+      },
+      // ── Sprint 2: Grupos ─────────────────────────────────────────────────────
+      {
+        path: 'grupos',
+        name: 'Grupos',
+        component: () => import('@/views/GruposView.vue'),
+      },
+      {
+        path: 'grupos/importar',
+        name: 'ImportarGrupos',
+        component: () => import('@/views/ImportarGruposView.vue'),
+      },
+      // ── Sprint 2: Reservas ───────────────────────────────────────────────────
+      {
+        path: 'reservas',
+        name: 'Reservas',
+        component: () => import('@/views/ReservasView.vue'),
+      },
+      {
+        path: 'reservas/crear',
+        name: 'CrearReserva',
+        component: () => import('@/views/CrearReservaView.vue'),
+      },
+      {
+        path: 'reservas/aprobar',
+        name: 'AprobarReservas',
+        component: () => import('@/views/AprobarReservasView.vue'),
+      },
+      {
+        path: 'reservas/despachar/:id',
+        name: 'DespacharReserva',
+        component: () => import('@/views/DespacharReservaView.vue'),
       },
     ],
   },

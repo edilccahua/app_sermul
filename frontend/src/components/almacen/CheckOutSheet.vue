@@ -3,7 +3,7 @@
     <SheetContent side="right" class="w-[420px] sm:w-[500px] flex flex-col" @open-auto-focus.prevent>
       <SheetHeader class="pb-4 border-b border-border">
         <SheetTitle class="flex items-center gap-2">
-          <ArrowRightOnRectangleIcon class="w-5 h-5 text-primary" />
+          <span class="sap-icon--sys-back w-5 h-5 flex items-center justify-center text-[var(--sapButton_Emphasized_Background)]" />
           Check-Out — Entrega de Herramienta
         </SheetTitle>
         <SheetDescription>
@@ -14,9 +14,9 @@
       <div class="flex-1 overflow-y-auto py-5 space-y-5">
         <!-- ① INPUT SHORT CODE — Auto-foco permanente -->
         <div class="space-y-1.5">
-          <label class="text-sm font-medium">Short Code *</label>
+          <label class="text-sm font-normal text-[var(--sapContent_LabelColor)]">Short Code *:</label>
           <div class="relative">
-            <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <span class="sap-icon--search absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-[var(--sapContent_LabelColor)]" />
             <input
               ref="inputRef"
               v-model="query"
@@ -28,12 +28,12 @@
               autofocus
             />
             <span v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
-              <ArrowPathIcon class="w-4 h-4 animate-spin text-muted-foreground" />
+              <span class="sap-icon--refresh w-4 h-4 flex items-center justify-center animate-spin text-[var(--sapContent_LabelColor)]" />
             </span>
           </div>
           <!-- Error de búsqueda -->
-          <p v-if="error" class="text-xs text-rose-400 flex items-center gap-1">
-            <ExclamationCircleIcon class="w-3.5 h-3.5" />{{ error }}
+          <p v-if="error" class="text-xs text-[var(--sapNegativeTextColor)] flex items-center gap-1">
+                          <span class="sap-icon--warning w-3.5 h-3.5 flex items-center justify-center" />{{ error }}
           </p>
         </div>
 
@@ -63,7 +63,7 @@
                 </div>
               </div>
               <span :class="['shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium mt-0.5',
-                u.estado === 'Disponible' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-muted text-muted-foreground']">
+                u.estado === 'Disponible' ? 'bg-[var(--sapSuccessBackground)] text-[var(--sapPositiveTextColor)] border border-[var(--sapSuccessBorderColor)]' : 'bg-muted text-muted-foreground']">
                 {{ u.estado }}
               </span>
             </button>
@@ -72,24 +72,24 @@
 
         <!-- ②b SUGERENCIAS: resultados del catálogo sin stock inmediato -->
         <div v-if="sugerencias.length > 0" class="space-y-2">
-          <p class="text-xs text-amber-400 font-medium uppercase tracking-wide">
+          <p class="text-xs text-[var(--sapWarningColor)] font-medium uppercase tracking-wide">
             {{ sugerencias.length }} coincidencia{{ sugerencias.length > 1 ? 's' : '' }} en catálogo
           </p>
-          <div class="rounded-md border border-amber-500/20 overflow-hidden">
+          <div           class="rounded-md border border-[var(--sapWarningBorderColor)] overflow-hidden">
             <button
               v-for="s in sugerencias"
               :key="'sug-'+s.catalogo_id"
               @click="buscarPorSugerencia(s)"
-              class="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b border-border last:border-0 hover:bg-amber-500/10"
+              class="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b border-border last:border-0 hover:bg-[var(--sapWarningBackground)]"
             >
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium">{{ s.catalogo?.nombre }}</p>
                 <div class="flex items-center gap-2 mt-0.5">
                   <code class="font-mono text-xs text-primary">{{ s.catalogo?.codigo_interno }}</code>
-                  <span class="text-xs text-amber-400">· Ver disponibilidad →</span>
+                  <span class="text-xs text-[var(--sapWarningColor)]">· Ver disponibilidad →</span>
                 </div>
               </div>
-              <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30 mt-0.5">
+              <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[var(--sapWarningBackground)] text-[var(--sapWarningColor)] border border-[var(--sapWarningBorderColor)] mt-0.5">
                 Catálogo
               </span>
             </button>
@@ -101,16 +101,16 @@
         </p>
 
         <!-- ③ DETALLES DE HERRAMIENTA seleccionada -->
-        <div v-if="unidadSeleccionada" class="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div v-if="unidadSeleccionada"           class="rounded-lg border border-[var(--sapInformationBorderColor)] bg-[var(--sapInformationBackground)] p-4 space-y-3">
           <div class="flex items-center gap-2">
-            <CheckCircleIcon class="w-4 h-4 text-primary" />
+            <span class="sap-icon--accept w-4 h-4 flex items-center justify-center text-[var(--sapButton_Emphasized_Background)]" />
             <p class="text-sm font-semibold">{{ unidadSeleccionada.catalogo?.nombre }}</p>
           </div>
           <div class="grid grid-cols-2 gap-1.5 text-xs">
             <span class="text-muted-foreground">Short code:</span>
             <code class="font-mono">{{ unidadSeleccionada.catalogo?.codigo_interno }}</code>
             <span class="text-muted-foreground">Estado actual:</span>
-            <span class="text-emerald-400">{{ unidadSeleccionada.estado }}</span>
+            <span class="text-[var(--sapPositiveTextColor)]">{{ unidadSeleccionada.estado }}</span>
             <span class="text-muted-foreground">Costo reposición:</span>
             <span>S/. {{ unidadSeleccionada.catalogo?.costo_reposicion?.toFixed(2) || '—' }}</span>
           </div>
@@ -119,21 +119,21 @@
         <!-- ④ GRUPO + PARADA -->
         <div v-if="unidadSeleccionada" class="space-y-4">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium">Parada Activa *</label>
+            <label class="text-sm font-normal text-[var(--sapContent_LabelColor)]">Parada Activa *:</label>
             <div v-if="paradasStore.paradaActiva"
               class="h-9 w-full rounded-md border border-border bg-muted/30 px-3 text-sm flex items-center gap-2">
-              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Activa</span>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-[var(--sapSuccessBackground)] text-[var(--sapPositiveTextColor)] border border-[var(--sapSuccessBorderColor)]">Activa</span>
               <span>{{ paradasStore.paradaActiva.nombre }}</span>
             </div>
-            <p v-else class="text-xs text-amber-400 flex items-center gap-1">
-              <ExclamationCircleIcon class="w-3.5 h-3.5" />
+            <p v-else class="text-xs text-[var(--sapWarningColor)] flex items-center gap-1">
+            <span class="sap-icon--warning w-3.5 h-3.5 flex items-center justify-center" />
               No hay parada activa. Crea una en Gestión de Paradas.
             </p>
           </div>
 
           <!-- GRUPO — workaround: seed GRP-001 mientras Sprint 2 implementa /api/grupos -->
           <div class="space-y-1.5">
-            <label class="text-sm font-medium">Grupo de Destino *</label>
+            <label class="text-sm font-normal text-[var(--sapContent_LabelColor)]">Grupo de Destino *:</label>
             <select v-model="grupoId"
               class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
               <option value="">Seleccionar grupo...</option>
@@ -150,7 +150,7 @@
       <SheetFooter class="pt-4 border-t border-border gap-3">
         <button
           @click="resetSheet"
-          class="flex-1 rounded-md border border-border px-4 py-2.5 text-sm hover:bg-muted transition-colors min-h-[48px]"
+          class="flex-1 rounded-sm border border-[var(--sapButton_BorderColor)] bg-[var(--sapButton_Background)] px-4 py-2.5 text-sm text-[var(--sapButton_TextColor)] hover:bg-[var(--sapButton_Hover_Background)] transition-colors min-h-[48px]"
         >
           Cancelar <kbd class="ml-1 text-xs opacity-50">Esc</kbd>
         </button>
@@ -160,12 +160,12 @@
           :class="[
             'flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-colors min-h-[48px]',
             puedeConfirmar && !confirmando
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              ? 'bg-[var(--sapButton_Accept_Background)] hover:bg-[var(--sapButton_Accept_Hover_Background)] text-[var(--sapButton_Accept_TextColor)]'
               : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50',
           ]"
         >
           <span v-if="confirmando" class="flex items-center justify-center gap-2">
-            <ArrowPathIcon class="w-4 h-4 animate-spin" />Entregando...
+            <span class="sap-icon--refresh w-4 h-4 flex items-center justify-center animate-spin" />Entregando...
           </span>
           <span v-else>
             ✓ Confirmar Entrega <kbd class="ml-1 text-xs opacity-70">Enter</kbd>
@@ -183,13 +183,7 @@ import { useShortCodeInput } from '@/composables/useShortCodeInput'
 import { useInventarioStore } from '@/stores/inventario'
 import { useParadasStore } from '@/stores/paradas'
 import { useToast } from '@/components/ui/toast'
-import {
-  ArrowRightOnRectangleIcon,
-  MagnifyingGlassIcon,
-  ArrowPathIcon,
-  ExclamationCircleIcon,
-  CheckCircleIcon,
-} from '@heroicons/vue/24/outline'
+
 
 const props = defineProps({
   open: { type: Boolean, default: false },

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
-from .api import auth, catalogo, check, historial, inventario, paradas
+from .api import auth, catalogo, check, historial, inventario, paradas, grupos, reservas, dashboards
 
 app = FastAPI(
     title="SERMUL API",
@@ -24,6 +24,9 @@ app.include_router(check.router, prefix="/api/inventario", tags=["check"])
 app.include_router(inventario.router, prefix="/api/inventario", tags=["inventario"])
 app.include_router(paradas.router, prefix="/api/paradas", tags=["paradas"])
 app.include_router(historial.router, prefix="/api/historial", tags=["historial"])
+app.include_router(grupos.router, prefix="/api/grupos", tags=["grupos"])
+app.include_router(reservas.router, prefix="/api/reservas", tags=["reservas"])
+app.include_router(dashboards.router, prefix="/api/dashboards", tags=["dashboards"])
 
 
 @app.get("/api/health")

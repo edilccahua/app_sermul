@@ -10,9 +10,9 @@ backend/__pycache__/
 .env
 .env.*
 !.env.example
-docker-compose.override.yml
 
 .DS_Store
 Thumbs.db
 
-.gitignore.bak
+backend/sql/seeds_desarrollo.sql
+backend/sql/seeds_masivo.sql

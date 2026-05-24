@@ -4,10 +4,11 @@ from .permiso import Permiso, RolPermiso
 from .parada import Parada
 from .categoria_material import CategoriaMaterial
 from .catalogo_material import CatalogoMaterial
-from .inventario_fisico import InventarioFisico
 from .historial_movimiento import HistorialMovimiento
 from .grupo_trabajo import GrupoTrabajo
 from .grupo_integrante import GrupoIntegrante
+from .reserva import Reserva
+from .reserva_detalle import ReservaDetalle
 
 __all__ = [
     "Usuario",
@@ -17,8 +18,9 @@ __all__ = [
     "Parada",
     "CategoriaMaterial",
     "CatalogoMaterial",
-    "InventarioFisico",
     "HistorialMovimiento",
     "GrupoTrabajo",
     "GrupoIntegrante",
+    "Reserva",
+    "ReservaDetalle",
 ]

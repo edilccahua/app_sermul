@@ -1,21 +1,25 @@
 from pydantic import BaseModel, Field
 
-from .historial import HistorialResponse
-from .inventario import InventarioResponse
-
 
 class CheckOutRequest(BaseModel):
-    short_code: str = Field(max_length=15)
+    catalogo_id: int
+    cantidad: int = Field(ge=1, default=1)
     grupo_id: int
     parada_id: int
+    observacion_entrega: str | None = None
 
 
 class CheckInRequest(BaseModel):
-    inventario_id: int
-    buen_estado: bool = True
-    dano: str | None = None
+    catalogo_id: int
+    cant_buen_estado: int = Field(ge=0, default=0)
+    cant_malograda: int = Field(ge=0, default=0)
+    observacion_recepcion: str | None = None
+    descripcion_dano: str | None = None
 
 
 class CheckResponse(BaseModel):
-    movimiento: HistorialResponse
-    unidad: InventarioResponse
+    movimiento_id: str
+    tipo: str
+    catalogo_id: int
+    cantidad: int
+    mensaje: str

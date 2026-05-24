@@ -48,34 +48,27 @@ export const catalogoAPI = {
   getById: (id) => api.get(`/catalogo/${id}`),
   create: (data) => api.post('/catalogo/', data),
   update: (id, data) => api.put(`/catalogo/${id}`, data),
+  updateStock: (id, field, delta) =>
+    api.put(`/catalogo/${id}/stock`, null, { params: { field, delta } }),
 }
 
-// ─── Inventario Físico ─────────────────────────────────────────────────────────
-// GET /api/inventario                    → lista con filtros opcionales
-// GET /api/inventario/buscar?short_code= → búsqueda por short code (para almacén)
-// GET /api/inventario/:id                → detalle de unidad física
-// PUT /api/inventario/:id/ubicacion      → cambiar ubicación macro
+// ─── Inventario (StockResponse) ────────────────────────────────────────────────
+// GET /api/inventario/                   → lista con filtros opcionales
+// GET /api/inventario/buscar?short_code= → búsqueda por short code (devuelve StockResponse[])
 export const inventarioAPI = {
   get: (params = {}) => api.get('/inventario/', { params }),
   buscar: (shortCode) => api.get('/inventario/buscar', { params: { short_code: shortCode } }),
-  getById: (id) => api.get(`/inventario/${id}`),
-  cambiarUbicacion: (id, ubicacionMacro) =>
-    api.put(`/inventario/${id}/ubicacion`, { ubicacion_macro: ubicacionMacro }),
 }
 
 // ─── Check-in / Check-out ──────────────────────────────────────────────────────
-// POST /api/inventario/check-out → { short_code, grupo_id, parada_id }
-//   Respuesta: { movimiento, unidad }
-//   Errores: 400 (sin unidades disponibles), 404 (código/grupo/parada no existe)
+// POST /api/inventario/check-out → { catalogo_id, cantidad, grupo_id, parada_id, observacion_entrega? }
+//   Respuesta plana: { movimiento_id, tipo, catalogo_id, cantidad, mensaje }
 //
-// POST /api/inventario/check-in  → { inventario_id, buen_estado, dano? }
-//   Respuesta: { movimiento, unidad }
-//   Errores: 400 (unidad no está En_Uso), 404 (unidad no existe)
+// POST /api/inventario/check-in  → { catalogo_id, cant_buen_estado, cant_malograda, observacion_recepcion?, descripcion_dano? }
+//   Respuesta plana: { movimiento_id, tipo, catalogo_id, cantidad, mensaje }
 export const almacenAPI = {
-  checkOut: ({ short_code, grupo_id, parada_id }) =>
-    api.post('/inventario/check-out', { short_code, grupo_id, parada_id }),
-  checkIn: ({ inventario_id, buen_estado, dano }) =>
-    api.post('/inventario/check-in', { inventario_id, buen_estado, dano }),
+  checkOut: (data) => api.post('/inventario/check-out', data),
+  checkIn: (data) => api.post('/inventario/check-in', data),
 }
 
 // ─── Paradas ───────────────────────────────────────────────────────────────────
@@ -99,11 +92,51 @@ export const historialAPI = {
 }
 
 // ─── Grupos de Trabajo ─────────────────────────────────────────────────────────
-// NOTA: GET /api/grupos NO existe en Sprint 1 (se implementa en Sprint 2).
-// Workaround: usar el seed GRP-001 (id=1) para pruebas de check-out.
-// Al implementar Sprint 2, reemplazar el workaround en CheckOutSheet.
+// GET    /api/grupos/                         → lista (filtros: ?parada_id=&estado=)
+// GET    /api/grupos/:id                      → detalle con integrantes
+// POST   /api/grupos/                         → crear
+// PUT    /api/grupos/:id                      → editar
+// POST   /api/grupos/importar-excel           → upload .xlsx + parada_id (Form)
+// POST   /api/grupos/:id/integrantes          → agregar integrante
+// DELETE /api/grupos/:id/integrantes/:uid     → remover integrante
 export const gruposAPI = {
-  get: () => api.get('/grupos'),
+  get: (params = {}) => api.get('/grupos/', { params }),
+  getById: (id) => api.get(`/grupos/${id}`),
+  create: (data) => api.post('/grupos/', data),
+  update: (id, data) => api.put(`/grupos/${id}`, data),
+  importExcel: (formData) =>
+    api.post('/grupos/importar-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  addIntegrante: (id, data) => api.post(`/grupos/${id}/integrantes`, data),
+  removeIntegrante: (id, usuarioId) =>
+    api.delete(`/grupos/${id}/integrantes/${usuarioId}`),
+}
+
+// ─── Reservas ──────────────────────────────────────────────────────────────────
+// GET  /api/reservas/              → lista (filtros: ?grupo_id=&estado=&parada_id=)
+// GET  /api/reservas/:id           → detalle con items + disponibilidad
+// POST /api/reservas/              → crear (requiere CREAR_RESERVA)
+// PUT  /api/reservas/:id           → editar (solo estado Pendiente)
+// POST /api/reservas/:id/aprobar   → aprobar (requiere APROBAR_RESERVA)
+// POST /api/reservas/:id/rechazar  → rechazar con motivo (requiere APROBAR_RESERVA)
+// POST /api/reservas/:id/despachar → despachar (requiere CHECK_OUT)
+export const reservasAPI = {
+  get: (params = {}) => api.get('/reservas/', { params }),
+  getById: (id) => api.get(`/reservas/${id}`),
+  create: (data) => api.post('/reservas/', data),
+  update: (id, data) => api.put(`/reservas/${id}`, data),
+  aprobar: (id) => api.post(`/reservas/${id}/aprobar`),
+  rechazar: (id, motivo) => api.post(`/reservas/${id}/rechazar`, { motivo }),
+  despachar: (id, itemsIds) =>
+    api.post(`/reservas/${id}/despachar`, { items_ids: itemsIds }),
+}
+
+// ─── Dashboards ────────────────────────────────────────────────────────────────
+// GET /api/dashboards/residente → KPIs gerenciales + gráficos + alertas
+//   Permiso: VER_DASHBOARD_COMPLETO
+export const dashboardAPI = {
+  residente: () => api.get('/dashboards/residente'),
 }
 
 export default api

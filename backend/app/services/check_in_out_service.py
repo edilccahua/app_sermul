@@ -1,8 +1,9 @@
-from fastapi import HTTPException, status
+from datetime import datetime, timezone
+import uuid
+
 from sqlalchemy.orm import Session
 
 from ..models.catalogo_material import CatalogoMaterial
-from ..models.inventario_fisico import InventarioFisico
 from ..models.historial_movimiento import HistorialMovimiento
 from ..models.grupo_trabajo import GrupoTrabajo
 from ..models.parada import Parada
@@ -13,121 +14,143 @@ class CheckInOutService:
         self.db = db
 
     def check_out(
-        self, short_code: str, grupo_id: int, parada_id: int, usuario_id: int
-    ) -> tuple[HistorialMovimiento, InventarioFisico]:
+        self, catalogo_id: int, cantidad: int, grupo_id: int,
+        parada_id: int, usuario_id: int,
+        observacion_entrega: str | None = None,
+    ):
+        material = self.db.query(CatalogoMaterial).filter(
+            CatalogoMaterial.id == catalogo_id
+        ).first()
+        if not material:
+            raise ValueError(f"Material con ID {catalogo_id} no encontrado")
+        if material.cant_disponible < cantidad:
+            raise ValueError(
+                f"Stock insuficiente. Solicitado: {cantidad}, Disponible: {material.cant_disponible}"
+            )
+
+        grupo = self.db.query(GrupoTrabajo).filter(GrupoTrabajo.id == grupo_id).first()
+        if not grupo:
+            raise ValueError(f"Grupo con ID {grupo_id} no encontrado")
+
+        parada = self.db.query(Parada).filter(Parada.id == parada_id).first()
+        if not parada:
+            raise ValueError(f"Parada con ID {parada_id} no encontrada")
+
         with self.db.begin_nested():
-            catalogo = (
-                self.db.query(CatalogoMaterial)
-                .filter(CatalogoMaterial.codigo_interno == short_code)
-                .first()
-            )
-            if not catalogo:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No existe material con código '{short_code}'",
-                )
-
-            grupo = (
-                self.db.query(GrupoTrabajo)
-                .filter(GrupoTrabajo.id == grupo_id)
-                .first()
-            )
-            if not grupo:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Grupo no encontrado",
-                )
-
-            parada = (
-                self.db.query(Parada)
-                .filter(Parada.id == parada_id)
-                .first()
-            )
-            if not parada:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Parada no encontrada",
-                )
-
-            unidad = (
-                self.db.query(InventarioFisico)
-                .filter(
-                    InventarioFisico.catalogo_id == catalogo.id,
-                    InventarioFisico.estado == "Disponible",
-                    InventarioFisico.ubicacion_macro == "Mina",
-                )
-                .first()
-            )
-            if not unidad:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No hay unidades disponibles de este material en Mina",
-                )
-
-            estado_anterior = unidad.estado
-            unidad.estado = "En_Uso"
+            material.cant_disponible -= cantidad
+            material.cant_en_uso += cantidad
 
             movimiento = HistorialMovimiento(
+                id=uuid.uuid4(),
+                timestamp=datetime.now(timezone.utc),
                 tipo_movimiento="Entrega",
-                catalogo_id=catalogo.id,
-                inventario_fisico_id=unidad.id,
+                catalogo_id=catalogo_id,
+                cantidad=cantidad,
                 parada_id=parada_id,
                 grupo_destino_id=grupo_id,
                 usuario_ejecuta_id=usuario_id,
-                estado_origen=estado_anterior,
+                observacion_entrega=observacion_entrega,
+                estado_origen="Disponible",
                 estado_destino="En_Uso",
             )
             self.db.add(movimiento)
+            self.db.flush()
 
         self.db.commit()
-        self.db.refresh(unidad)
-        self.db.refresh(movimiento)
-        return movimiento, unidad
+        return {
+            "movimiento_id": str(movimiento.id),
+            "tipo": "Entrega",
+            "catalogo_id": catalogo_id,
+            "cantidad": cantidad,
+            "mensaje": f"Entregado: {cantidad} x {material.nombre} a {grupo.nombre}",
+        }
 
     def check_in(
-        self, inventario_id: int, buen_estado: bool, usuario_id: int, dano: str | None = None
-    ) -> tuple[HistorialMovimiento, InventarioFisico]:
+        self, catalogo_id: int, cant_buen_estado: int,
+        cant_malograda: int, usuario_id: int,
+        observacion_recepcion: str | None = None,
+        descripcion_dano: str | None = None,
+    ):
+        if cant_buen_estado + cant_malograda == 0:
+            raise ValueError("Debe devolver al menos una unidad")
+
+        material = self.db.query(CatalogoMaterial).filter(
+            CatalogoMaterial.id == catalogo_id
+        ).first()
+        if not material:
+            raise ValueError(f"Material con ID {catalogo_id} no encontrado")
+
+        total_devuelto = cant_buen_estado + cant_malograda
+        if material.cant_en_uso < total_devuelto:
+            raise ValueError(
+                f"No hay tantas unidades en uso. En uso: {material.cant_en_uso}, "
+                f"Intentando devolver: {total_devuelto}"
+            )
+
+        ultima_entrega = (
+            self.db.query(HistorialMovimiento)
+            .filter(
+                HistorialMovimiento.catalogo_id == catalogo_id,
+                HistorialMovimiento.tipo_movimiento == "Entrega",
+            )
+            .order_by(HistorialMovimiento.timestamp.desc())
+            .first()
+        )
+        parada_id = ultima_entrega.parada_id if ultima_entrega else 1
+        grupo_id = ultima_entrega.grupo_destino_id if ultima_entrega else None
+
         with self.db.begin_nested():
-            unidad = (
-                self.db.query(InventarioFisico)
-                .filter(InventarioFisico.id == inventario_id)
-                .first()
-            )
-            if not unidad:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Unidad de inventario no encontrada",
+            material.cant_en_uso -= total_devuelto
+
+            mov_bueno = None
+            mov_malo = None
+
+            if cant_buen_estado > 0:
+                material.cant_disponible += cant_buen_estado
+                mov_bueno = HistorialMovimiento(
+                    id=uuid.uuid4(),
+                    timestamp=datetime.now(timezone.utc),
+                    tipo_movimiento="Devolucion",
+                    catalogo_id=catalogo_id,
+                    cantidad=cant_buen_estado,
+                    parada_id=parada_id,
+                    grupo_destino_id=grupo_id,
+                    usuario_ejecuta_id=usuario_id,
+                    observacion_recepcion=observacion_recepcion,
+                    estado_origen="En_Uso",
+                    estado_destino="Disponible",
                 )
+                self.db.add(mov_bueno)
 
-            if unidad.estado != "En_Uso":
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="La unidad no está en estado 'En_Uso'",
+            if cant_malograda > 0:
+                material.cant_malograda += cant_malograda
+                mov_malo = HistorialMovimiento(
+                    id=uuid.uuid4(),
+                    timestamp=datetime.now(timezone.utc),
+                    tipo_movimiento="Paso_Mantenimiento",
+                    catalogo_id=catalogo_id,
+                    cantidad=cant_malograda,
+                    parada_id=parada_id,
+                    grupo_destino_id=grupo_id,
+                    usuario_ejecuta_id=usuario_id,
+                    observacion_recepcion=observacion_recepcion or descripcion_dano,
+                    estado_origen="En_Uso",
+                    estado_destino="Malograda",
                 )
+                self.db.add(mov_malo)
 
-            estado_anterior = unidad.estado
-            if buen_estado:
-                unidad.estado = "Disponible"
-                tipo_mov = "Devolucion"
-                observaciones = None
-            else:
-                unidad.estado = "Malograda"
-                tipo_mov = "Paso_Mantenimiento"
-                observaciones = dano
-
-            movimiento = HistorialMovimiento(
-                tipo_movimiento=tipo_mov,
-                catalogo_id=unidad.catalogo_id,
-                inventario_fisico_id=unidad.id,
-                parada_id=1,
-                usuario_ejecuta_id=usuario_id,
-                estado_origen=estado_anterior,
-                estado_destino=unidad.estado,
-                observaciones=observaciones,
-            )
-            self.db.add(movimiento)
+            self.db.flush()
 
         self.db.commit()
-        self.db.refresh(unidad)
-        self.db.refresh(movimiento)
-        return movimiento, unidad
+        movimiento_id = str(mov_bueno.id) if mov_bueno else str(mov_malo.id)  # type: ignore[union-attr]
+
+        return {
+            "movimiento_id": movimiento_id,
+            "tipo": "Devolucion",
+            "catalogo_id": catalogo_id,
+            "cantidad": total_devuelto,
+            "mensaje": (
+                f"Devuelto: {cant_buen_estado} en buen estado"
+                + (f", {cant_malograda} malogradas" if cant_malograda > 0 else "")
+            ),
+        }

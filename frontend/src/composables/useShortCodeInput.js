@@ -35,6 +35,7 @@ export function useShortCodeInput({ onResult } = {}) {
   }
 
   // ── Búsqueda dual: short code exacto → nombre catálogo ──
+  // Ahora devuelve StockResponse[] (materiales con contadores), no unidades físicas
   watch(query, (val) => {
     clearTimeout(debounceTimer)
     error.value = null
@@ -48,17 +49,13 @@ export function useShortCodeInput({ onResult } = {}) {
         const q = val.trim()
         const res = await inventarioAPI.buscar(q)
         if (res.data.length > 0) {
-          results.value = res.data
+          // Ahora res.data es StockResponse[] — filtrar por cant_disponible > 0
+          results.value = res.data.filter(m => m.cant_disponible > 0)
         } else {
           const catRes = await catalogoAPI.search(q)
           if (catRes.data.length > 0) {
             results.value = catRes.data.map((c) => ({
-              id: null,
-              catalogo_id: c.id,
-              estado: 'Ver disponibilidad',
-              ubicacion_macro: null,
-              ubicacion_fisica: null,
-              catalogo: c,
+              ...c,
               _esSugerencia: true,
             }))
           } else {

@@ -57,6 +57,13 @@ export const useCatalogoStore = defineStore('catalogo', () => {
     return data
   }
 
+  async function updateStock(id, field, delta) {
+    const { data } = await catalogoAPI.updateStock(id, field, delta)
+    const idx = items.value.findIndex(i => i.id === id)
+    if (idx !== -1) items.value[idx] = data
+    return data
+  }
+
   function $reset() {
     items.value = []
     loading.value = false
@@ -73,6 +80,7 @@ export const useCatalogoStore = defineStore('catalogo', () => {
     fetchAll,
     createMaterial,
     updateMaterial,
+    updateStock,
     $reset,
   }
 })

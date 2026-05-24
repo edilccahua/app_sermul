@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..api.deps import RequirePermission
@@ -58,3 +58,18 @@ def update_catalogo(
 ):
     service = CatalogoService(db)
     return service.update(catalogo_id, data)
+
+
+@router.put("/{catalogo_id}/stock", response_model=CatalogoResponse)
+def update_stock(
+    catalogo_id: int,
+    field: str,
+    delta: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(RequirePermission("EDITAR_INVENTARIO")),
+):
+    service = CatalogoService(db)
+    try:
+        return service.update_stock(catalogo_id, field, delta)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

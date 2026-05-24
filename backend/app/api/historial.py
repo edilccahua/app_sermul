@@ -18,6 +18,7 @@ def list_historial(
     tipo: str | None = Query(None),
     fecha_desde: datetime | None = Query(None),
     fecha_hasta: datetime | None = Query(None),
+    catalogo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     _: Usuario = Depends(RequirePermission("VER_INVENTARIO")),
 ):
@@ -26,6 +27,7 @@ def list_historial(
         tipo=tipo,
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
+        catalogo_id=catalogo_id,
     )
     service = HistorialService(db)
     return service.get_all(filters)

@@ -2,52 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    /* Dark Industrial Theme - Slate base */
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 12%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 200 98% 50%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 217 33% 22%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 22%;
-    --input: 217 33% 17%;
-    --ring: 200 98% 50%;
-    --radius: 0.5rem;
-  }
+/* ── Destrucción de geometría shadcn → Fiori 2px ── */
+:root {
+  --radius: 0.125rem;
+}
 
-  .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 12%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 200 98% 50%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 217 33% 22%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 22%;
-    --input: 217 33% 17%;
-    --ring: 200 98% 50%;
-  }
+/* ── Tipografía SAP 72 ── */
+html {
+  font-size: 16px;
+  font-family: var(--sapFontFamily);
+}
+
+.font-mono, [class*="font-mono"] {
+  font-family: var(--sapContent_MonospaceFontFamily), monospace;
+}
+
+/* ── Dark Theme Overrides (Evening Horizon) ──
+   Se activa agregando class="sap-horizon-dark" al <html> */
+.sap-horizon-dark {
+  --sapBackgroundColor: #12171c;
+  --sapTextColor: #f5f6f7;
+  --sapLinkColor: #008fff;
+  --sapButton_Background: #1c242c;
+  --sapButton_BorderColor: #3a4a5a;
+  --sapButton_TextColor: #4db1ff;
+  --sapButton_Emphasized_Background: #0070f2;
+  --sapButton_Emphasized_BorderColor: #0070f2;
+  --sapButton_Emphasized_TextColor: #fff;
+  --sapButton_Accept_Background: #153e20;
+  --sapButton_Accept_BorderColor: #1b512a;
+  --sapButton_Accept_TextColor: #97dd40;
+  --sapButton_Reject_Background: #490000;
+  --sapButton_Reject_BorderColor: #620000;
+  --sapButton_Reject_TextColor: #fa6161;
+  --sapSuccessBackground: #11331a;
+  --sapPositiveTextColor: #97dd40;
+  --sapSuccessBorderColor: #6dad1f;
+  --sapInformationBackground: #00144a;
+  --sapInformationTextColor: #4db1ff;
+  --sapInformationBorderColor: #4db1ff;
+  --sapErrorBackground: #350000;
+  --sapNegativeTextColor: #fa6161;
+  --sapErrorBorderColor: #fa6161;
+  --sapNeutralBackground: #242e38;
+  --sapNeutralTextColor: #f5f6f7;
+  --sapNeutralBorderColor: #a9b4be;
+  --sapContent_LabelColor: #8396a8;
+  --sapContent_IconColor: #f5f6f7;
+  --sapContent_Shadow0: 0 0 0.125rem 0 rgba(255,255,255,0.6), 0 0.125rem 0.5rem 0 rgba(0,0,0,0.2);
+  --sapContent_Shadow1: 0 0 0 0.0625rem rgba(255,255,255,0.35), 0 0.125rem 0.5rem 0 rgba(0,0,0,0.6);
+  --sapContent_Shadow2: 0 0 0 0.0625rem rgba(255,255,255,0.35), 0 0.625rem 1.875rem 0 rgba(0,0,0,0.6);
+  --sapContent_Shadow3: 0 0 0 0.0625rem rgba(255,255,255,0.35), 0 1.25rem 5rem 0 rgba(0,0,0,0.6);
+  --sapField_Background: #1c242c;
+  --sapField_BorderColor: #3a4a5a;
+  --sapField_TextColor: #f5f6f7;
+  --sapField_PlaceholderTextColor: #8396a8;
+  --sapGroup_ContentBackground: #1d232a;
+  --sapList_BorderColor: #2e3742;
+  --sapShell_Background: #12171c;
+  --sapPageHeader_Background: #1d232a;
+  --sapObjectHeader_Background: #1d232a;
+  --sapTile_Background: #1d232a;
 }
 
 @layer base {

@@ -1,8 +1,3 @@
-/**
- * Store: Inventario Físico
- * Cache de unidades físicas con soporte de filtros.
- * Se invalida automáticamente después de un check-in/out.
- */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { inventarioAPI, almacenAPI } from '@/api'
@@ -11,36 +6,33 @@ export const useInventarioStore = defineStore('inventario', () => {
   const items = ref([])
   const loading = ref(false)
   const error = ref(null)
-  const lastFetch = ref(null)
 
-  // Filtros activos
-  const filtroEstado = ref('')
-  const filtroUbicacion = ref('')
+  const filtroTipo = ref('')
+  const filtroCategoria = ref('')
+  const soloConStock = ref(false)
+  const busquedaTexto = ref('')
 
-  // ── Computed ─────────────────────────────────────────────
   const itemsFiltrados = computed(() => {
-    return items.value.filter((item) => {
-      const matchEstado = !filtroEstado.value || item.estado === filtroEstado.value
-      const matchUbicacion =
-        !filtroUbicacion.value || item.ubicacion_macro === filtroUbicacion.value
-      return matchEstado && matchUbicacion
-    })
+    let result = items.value
+    if (filtroTipo.value) result = result.filter(i => i.tipo_material === filtroTipo.value)
+    if (filtroCategoria.value) result = result.filter(i => i.categoria_id === Number(filtroCategoria.value))
+    if (soloConStock.value) result = result.filter(i => i.cant_disponible > 0)
+    if (busquedaTexto.value) {
+      const q = busquedaTexto.value.toLowerCase()
+      result = result.filter(i =>
+        i.nombre?.toLowerCase().includes(q) ||
+        i.codigo_interno?.toLowerCase().includes(q)
+      )
+    }
+    return result
   })
 
-  const disponiblesEnMina = computed(() =>
-    items.value.filter(
-      (i) => i.estado === 'Disponible' && i.ubicacion_macro === 'Mina',
-    ),
-  )
-
-  // ── Actions ───────────────────────────────────────────────
   async function fetchAll(params = {}) {
     loading.value = true
     error.value = null
     try {
       const { data } = await inventarioAPI.get(params)
       items.value = data
-      lastFetch.value = Date.now()
     } catch (err) {
       error.value = err.response?.data?.detail || 'Error al cargar inventario'
     } finally {
@@ -48,72 +40,53 @@ export const useInventarioStore = defineStore('inventario', () => {
     }
   }
 
-  /**
-   * Busca unidades disponibles en Mina para un short_code.
-   * Retorna array de InventarioResponse.
-   */
-  async function buscarPorShortCode(shortCode) {
+  async function buscar(shortCode) {
     const { data } = await inventarioAPI.buscar(shortCode)
     return data
   }
 
-  /**
-   * Ejecuta check-out y refresca el inventario.
-   * @returns { movimiento, unidad }
-   */
-  async function checkOut(payload) {
-    const { data } = await almacenAPI.checkOut(payload)
-    // Actualizar la unidad en caché
-    const idx = items.value.findIndex((i) => i.id === data.unidad.id)
-    if (idx !== -1) items.value[idx] = data.unidad
-    return data
+  async function checkOut(data) {
+    const res = await almacenAPI.checkOut(data)
+    return res.data
   }
 
-  /**
-   * Ejecuta check-in y refresca el inventario.
-   * @returns { movimiento, unidad }
-   */
-  async function checkIn(payload) {
-    const { data } = await almacenAPI.checkIn(payload)
-    const idx = items.value.findIndex((i) => i.id === data.unidad.id)
-    if (idx !== -1) items.value[idx] = data.unidad
-    return data
+  async function checkIn(data) {
+    const res = await almacenAPI.checkIn(data)
+    return res.data
   }
 
-  async function cambiarUbicacion(id, ubicacionMacro) {
-    const { data } = await inventarioAPI.cambiarUbicacion(id, ubicacionMacro)
-    const idx = items.value.findIndex((i) => i.id === id)
-    if (idx !== -1) items.value[idx] = data
-    return data
-  }
-
-  function setFiltroEstado(val) { filtroEstado.value = val }
-  function setFiltroUbicacion(val) { filtroUbicacion.value = val }
+  function setFiltroTipo(val) { filtroTipo.value = val }
+  function setFiltroCategoria(val) { filtroCategoria.value = val }
+  function setSoloConStock(val) { soloConStock.value = val }
+  function setBusquedaTexto(val) { busquedaTexto.value = val }
 
   function $reset() {
     items.value = []
     loading.value = false
     error.value = null
-    lastFetch.value = null
-    filtroEstado.value = ''
-    filtroUbicacion.value = ''
+    filtroTipo.value = ''
+    filtroCategoria.value = ''
+    soloConStock.value = false
+    busquedaTexto.value = ''
   }
 
   return {
     items,
     loading,
     error,
-    filtroEstado,
-    filtroUbicacion,
+    filtroTipo,
+    filtroCategoria,
+    soloConStock,
+    busquedaTexto,
     itemsFiltrados,
-    disponiblesEnMina,
     fetchAll,
-    buscarPorShortCode,
+    buscar,
     checkOut,
     checkIn,
-    cambiarUbicacion,
-    setFiltroEstado,
-    setFiltroUbicacion,
+    setFiltroTipo,
+    setFiltroCategoria,
+    setSoloConStock,
+    setBusquedaTexto,
     $reset,
   }
 })

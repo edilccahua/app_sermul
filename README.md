@@ -55,8 +55,10 @@ app_sermul/
 
 ### Requisitos
 
-- Docker 24+ y Docker Compose 2.23+
-- Git
+- Docker 24+ y Docker Compose 2.23+ (opcional, ver "Sin Docker")
+- PostgreSQL 15 corriendo localmente o accesible en red
+- Python 3.11+
+- Node.js 18+
 - 4 GB RAM disponible
 
 ### Clonar y levantar
@@ -71,6 +73,32 @@ cp .env.example .env # Edita .env con tus credenciales
 # Levantar los servicios
 docker compose up -d --build
 ```
+
+### Sin Docker (desarrollo local desde ZIP)
+
+Si no usas Docker o prefieres desarrollar localmente:
+
+```bash
+# 1. PostgreSQL — crear la base de datos
+createdb sermul
+psql -d sermul -f backend/sql/init.sql
+
+# 2. Backend
+cd backend
+python -m venv venv
+source venv/bin/activate        # Linux/Mac
+# venv\Scripts\activate         # Windows
+cp .env.example .env            # Editar DATABASE_URL y SECRET_KEY
+pip install -r requirements.txt
+uvicorn app.main:app --reload   # http://localhost:8000
+
+# 3. Frontend (otra terminal)
+cd frontend
+npm install
+npm run dev                     # http://localhost:5173
+```
+
+**Nota:** El proxy de Vite (`vite.config.js`) redirige `/api` a `http://localhost:8000`. Asegúrate de que el backend esté corriendo antes de usar el frontend.
 
 ### Desarrollo Local de Backend
 

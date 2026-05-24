@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from jose import JWTError, jwt  # type: ignore
+from passlib.context import CryptContext  # type: ignore
 
 from .config import settings
 
