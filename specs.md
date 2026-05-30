@@ -45,3 +45,11 @@ Todo cambio de estado genera un evento en la tabla `historial_movimientos` para 
 *   **Rendimiento Operativo:** Las operaciones de ventanilla deben concluirse en menos de 3 segundos por ítem para evitar interrupciones operativas.
 *   **Resiliencia de Red:** Las funciones críticas de despacho deben estar disponibles en modo offline.
 *   **Trazabilidad:** Cada transición de estado debe asociarse a un timestamp, un código de material, una parada activa y un registro auditable.
+
+## 5. Decisiones Arquitectónicas y Actualizaciones Recientes
+
+*   **Estandarización UI Fiori (Vistas Centrales):** Se ha garantizado la rigidez visual corporativa de Fiori alineando la arquitectura de componentes (`ParadasView`, `GruposView`, `PersonalView`, `AboutView`). Esto incluye el encapsulamiento de iconos principales (`w-7 h-7 flex items-center justify-center`), unificación de paddings de celdas (`px-3`) y eliminación estricta de bordes circulares web (`rounded-full` a `rounded-sm`).
+*   **Enrutamiento Catch-All (404):** Se implementó una vista segura `NotFoundView.vue` anclada a la regla de enrutamiento `/:pathMatch(.*)*` para capturar accesos a URIs inexistentes sin colgar la PWA.
+*   **Inyección de Credenciales (Hardcoded vs Seeds):**
+    *   El usuario **Admin (12345678)** está acoplado permanentemente a la infraestructura base (`init.sql`) asegurando el acceso nativo, independiente de los flujos de pruebas.
+    *   El usuario **Residente (11111111)** y el resto de personal (Almaceneros, Líderes) provienen exclusivamente del script de volumetría dinámica (`generate_seeds.py`), permitiendo flexibilidad extrema en simulaciones logísticas de alto impacto.

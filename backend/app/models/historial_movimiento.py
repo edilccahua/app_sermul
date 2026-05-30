@@ -46,8 +46,7 @@ class HistorialMovimiento(Base):
     usuario_receptor_id: Mapped[int | None] = mapped_column(
         ForeignKey("usuarios.id")
     )
-    tarea_id: Mapped[int | None] = mapped_column(Integer)
-    reserva_id: Mapped[int | None] = mapped_column(Integer)
+    reserva_id: Mapped[int | None] = mapped_column(ForeignKey("reservas.id"))
     estado_origen: Mapped[str | None] = mapped_column(String(20))
     estado_destino: Mapped[str | None] = mapped_column(String(20))
     observaciones: Mapped[str | None] = mapped_column(Text)

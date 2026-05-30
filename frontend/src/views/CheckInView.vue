@@ -1,6 +1,8 @@
 <template>
-  <div class="h-full flex flex-col" :style="{ background: 'var(--sapBackgroundColor)' }">
-
+  <div
+    class="h-full flex flex-col"
+    :style="{ background: 'var(--sapBackgroundColor)' }"
+  >
     <!-- ── Dynamic Page Header ─────────────────────────────────────────────── -->
     <div
       class="px-6 py-4 border-b border-border shrink-0"
@@ -12,10 +14,16 @@
           :style="{ color: 'var(--sapButton_Emphasized_Background)' }"
         />
         <div>
-          <h1 class="text-xl font-bold" :style="{ color: 'var(--sapTextColor)' }">
+          <h1
+            class="text-xl font-bold"
+            :style="{ color: 'var(--sapTextColor)' }"
+          >
             Almacén — Entrada de Herramientas
           </h1>
-          <p class="text-sm" :style="{ color: 'var(--sapContent_LabelColor)' }">
+          <p
+            class="text-sm"
+            :style="{ color: 'var(--sapContent_LabelColor)' }"
+          >
             Devolución e inspección visual de herramientas
           </p>
         </div>
@@ -25,17 +33,22 @@
     <!-- ── Content Area ─────────────────────────────────────────────────────── -->
     <div class="flex-1 overflow-y-auto p-6">
       <div class="max-w-2xl mx-auto space-y-4">
-
         <!-- ── Bloque 1: Búsqueda ─────────────────────────────────────────── -->
         <div
           class="p-6 rounded-sm border"
           :style="{ background: 'var(--sapGroup_ContentBackground)', borderColor: 'var(--sapList_BorderColor)' }"
         >
-          <h2 class="text-base font-semibold mb-4" :style="{ color: 'var(--sapTextColor)' }">
+          <h2
+            class="text-base font-semibold mb-4"
+            :style="{ color: 'var(--sapTextColor)' }"
+          >
             Buscar herramienta a devolver
           </h2>
           <div class="space-y-1.5">
-            <label class="text-sm font-normal" :style="{ color: 'var(--sapContent_LabelColor)' }">
+            <label
+              class="text-sm font-normal"
+              :style="{ color: 'var(--sapContent_LabelColor)' }"
+            >
               Short Code *:
             </label>
             <div class="relative">
@@ -54,37 +67,61 @@
                   color: 'var(--sapField_TextColor)',
                 }"
                 autocomplete="off"
-              />
-              <span v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
+              >
+              <span
+                v-if="loading"
+                class="absolute right-3 top-1/2 -translate-y-1/2"
+              >
                 <span
                   class="sap-icon--refresh animate-spin"
                   :style="{ color: 'var(--sapContent_LabelColor)' }"
                 />
               </span>
             </div>
-            <p v-if="error" class="text-xs flex items-center gap-1" :style="{ color: 'var(--sapNegativeTextColor)' }">
+            <p
+              v-if="error"
+              class="text-xs flex items-center gap-1"
+              :style="{ color: 'var(--sapNegativeTextColor)' }"
+            >
               <span class="sap-icon--message-error" /> {{ error }}
             </p>
           </div>
 
           <!-- Resultados de búsqueda (materiales en uso) -->
-          <div v-if="resultadosDevolucion.length > 0" class="mt-4 space-y-2">
-            <p class="text-xs font-medium uppercase tracking-wide" :style="{ color: 'var(--sapContent_LabelColor)' }">
+          <div
+            v-if="resultadosDevolucion.length > 0"
+            class="mt-4 space-y-2"
+          >
+            <p
+              class="text-xs font-medium uppercase tracking-wide"
+              :style="{ color: 'var(--sapContent_LabelColor)' }"
+            >
               {{ resultadosDevolucion.length }} material{{ resultadosDevolucion.length > 1 ? 'es' : '' }} en uso
             </p>
-            <div class="rounded-sm border overflow-hidden" :style="{ borderColor: 'var(--sapList_BorderColor)' }">
+            <div
+              class="rounded-sm border overflow-hidden"
+              :style="{ borderColor: 'var(--sapList_BorderColor)' }"
+            >
               <button
                 v-for="m in resultadosDevolucion"
                 :key="m.id"
-                @click="seleccionarMaterial(m)"
                 class="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b last:border-0"
                 :style="materialSeleccionado?.id === m.id
                   ? { background: 'var(--sapInformationBackground)', borderLeftWidth: '2px', borderLeftColor: 'var(--sapButton_Emphasized_Background)', borderColor: 'var(--sapList_BorderColor)' }
                   : { background: 'var(--sapGroup_ContentBackground)', borderColor: 'var(--sapList_BorderColor)' }"
+                @click="seleccionarMaterial(m)"
               >
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium" :style="{ color: 'var(--sapTextColor)' }">{{ m.nombre }}</p>
-                  <code class="font-mono text-xs" :style="{ color: 'var(--sapContent_LabelColor)' }">{{ m.codigo_interno }}</code>
+                  <p
+                    class="text-sm font-medium"
+                    :style="{ color: 'var(--sapTextColor)' }"
+                  >
+                    {{ m.nombre }}
+                  </p>
+                  <code
+                    class="font-mono text-xs"
+                    :style="{ color: 'var(--sapContent_LabelColor)' }"
+                  >{{ m.codigo_interno }}</code>
                 </div>
                 <span
                   class="shrink-0 text-xs px-2 py-0.5 rounded-sm border font-medium"
@@ -107,27 +144,52 @@
             :style="{ background: 'var(--sapInformationBackground)', borderColor: 'var(--sapInformationBorderColor)' }"
           >
             <div class="flex items-center gap-2 mb-2">
-              <span class="sap-icon--product" :style="{ color: 'var(--sapInformationTextColor)' }" />
-              <p class="text-sm font-semibold" :style="{ color: 'var(--sapTextColor)' }">{{ materialSeleccionado.nombre }}</p>
+              <span
+                class="sap-icon--product"
+                :style="{ color: 'var(--sapInformationTextColor)' }"
+              />
+              <p
+                class="text-sm font-semibold"
+                :style="{ color: 'var(--sapTextColor)' }"
+              >
+                {{ materialSeleccionado.nombre }}
+              </p>
             </div>
             <div class="grid grid-cols-2 gap-1 text-xs">
               <span :style="{ color: 'var(--sapContent_LabelColor)' }">Código:</span>
-              <code class="font-mono" :style="{ color: 'var(--sapTextColor)' }">{{ materialSeleccionado.codigo_interno }}</code>
+              <code
+                class="font-mono"
+                :style="{ color: 'var(--sapTextColor)' }"
+              >{{ materialSeleccionado.codigo_interno }}</code>
               <span :style="{ color: 'var(--sapContent_LabelColor)' }">En uso:</span>
-              <span class="font-semibold" :style="{ color: 'var(--sapInformationTextColor)' }">{{ materialSeleccionado.cant_en_uso }} unidades</span>
+              <span
+                class="font-semibold"
+                :style="{ color: 'var(--sapInformationTextColor)' }"
+              >{{ materialSeleccionado.cant_en_uso }} unidades</span>
               <span :style="{ color: 'var(--sapContent_LabelColor)' }">Costo reposición:</span>
               <span :style="{ color: 'var(--sapTextColor)' }">S/. {{ materialSeleccionado.costo_reposicion?.toFixed(2) || '--' }}</span>
             </div>
           </div>
 
-          <h3 class="text-base font-semibold mb-3" :style="{ color: 'var(--sapTextColor)' }">Devolución</h3>
-          <p class="text-sm mb-4" :style="{ color: 'var(--sapContent_LabelColor)' }">
+          <h3
+            class="text-base font-semibold mb-3"
+            :style="{ color: 'var(--sapTextColor)' }"
+          >
+            Devolución
+          </h3>
+          <p
+            class="text-sm mb-4"
+            :style="{ color: 'var(--sapContent_LabelColor)' }"
+          >
             Indique cuántas unidades se devuelven y en qué estado
           </p>
 
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div class="space-y-1.5">
-              <label class="text-sm font-normal" :style="{ color: 'var(--sapContent_LabelColor)' }">En buen estado *:</label>
+              <label
+                class="text-sm font-normal"
+                :style="{ color: 'var(--sapContent_LabelColor)' }"
+              >En buen estado *:</label>
               <input
                 v-model.number="cantBuenEstado"
                 type="number"
@@ -135,10 +197,13 @@
                 :max="materialSeleccionado.cant_en_uso"
                 class="w-full h-12 border px-3 text-sm rounded-sm focus:outline-none focus:ring-1"
                 :style="{ background: 'var(--sapSuccessBackground)', borderColor: 'var(--sapSuccessBorderColor)', color: 'var(--sapTextColor)' }"
-              />
+              >
             </div>
             <div class="space-y-1.5">
-              <label class="text-sm font-normal" :style="{ color: 'var(--sapContent_LabelColor)' }">Malogradas *:</label>
+              <label
+                class="text-sm font-normal"
+                :style="{ color: 'var(--sapContent_LabelColor)' }"
+              >Malogradas *:</label>
               <input
                 v-model.number="cantMalograda"
                 type="number"
@@ -146,18 +211,27 @@
                 :max="materialSeleccionado.cant_en_uso"
                 class="w-full h-12 border px-3 text-sm rounded-sm focus:outline-none focus:ring-1"
                 :style="{ background: 'var(--sapErrorBackground)', borderColor: 'var(--sapErrorBorderColor)', color: 'var(--sapTextColor)' }"
-              />
+              >
             </div>
           </div>
 
-          <p v-if="cantBuenEstado + cantMalograda > materialSeleccionado.cant_en_uso" class="text-xs mb-3"
-            :style="{ color: 'var(--sapNegativeTextColor)' }">
+          <p
+            v-if="cantBuenEstado + cantMalograda > materialSeleccionado.cant_en_uso"
+            class="text-xs mb-3"
+            :style="{ color: 'var(--sapNegativeTextColor)' }"
+          >
             El total ({{ cantBuenEstado + cantMalograda }}) supera las {{ materialSeleccionado.cant_en_uso }} unidades en uso
           </p>
 
           <!-- Descripción del daño (obligatorio si cantMalograda > 0) -->
-          <div v-if="cantMalograda > 0" class="space-y-1.5 mb-4">
-            <label class="text-sm font-normal" :style="{ color: 'var(--sapContent_LabelColor)' }">Descripción del daño *:</label>
+          <div
+            v-if="cantMalograda > 0"
+            class="space-y-1.5 mb-4"
+          >
+            <label
+              class="text-sm font-normal"
+              :style="{ color: 'var(--sapContent_LabelColor)' }"
+            >Descripción del daño *:</label>
             <textarea
               v-model="descripcionDano"
               placeholder="Describa el daño observado..."
@@ -169,15 +243,21 @@
                 color: 'var(--sapField_TextColor)',
               }"
             />
-            <p v-if="!descripcionDano.trim() && intentoConfirmar" class="text-xs"
-              :style="{ color: 'var(--sapNegativeTextColor)' }">
+            <p
+              v-if="!descripcionDano.trim() && intentoConfirmar"
+              class="text-xs"
+              :style="{ color: 'var(--sapNegativeTextColor)' }"
+            >
               La descripción del daño es obligatoria.
             </p>
           </div>
 
           <!-- Observación de recepción (opcional) -->
           <div class="space-y-1.5 mb-4">
-            <label class="text-sm font-normal" :style="{ color: 'var(--sapContent_LabelColor)' }">Observación de recepción:</label>
+            <label
+              class="text-sm font-normal"
+              :style="{ color: 'var(--sapContent_LabelColor)' }"
+            >Observación de recepción:</label>
             <textarea
               v-model="observacionRecepcion"
               placeholder="ej: devuelto con cable dañado, le falta un perno"
@@ -193,28 +273,39 @@
             class="flex items-start gap-2 p-3 rounded-sm border mb-4"
             :style="{ background: 'var(--sapErrorBackground)', borderColor: 'var(--sapErrorBorderColor)' }"
           >
-            <span class="sap-icon--message-error shrink-0" :style="{ color: 'var(--sapNegativeTextColor)' }" />
-            <p class="text-sm" :style="{ color: 'var(--sapNegativeTextColor)' }">{{ errorApi }}</p>
+            <span
+              class="sap-icon--message-error shrink-0"
+              :style="{ color: 'var(--sapNegativeTextColor)' }"
+            />
+            <p
+              class="text-sm"
+              :style="{ color: 'var(--sapNegativeTextColor)' }"
+            >
+              {{ errorApi }}
+            </p>
           </div>
 
           <!-- Acciones -->
           <div class="flex gap-3">
             <button
-              @click="cancelar"
               class="flex-1 h-12 text-sm border rounded-sm transition-colors"
               :style="{ background: 'var(--sapButton_Background)', color: 'var(--sapButton_TextColor)', borderColor: 'var(--sapButton_BorderColor)' }"
+              @click="cancelar"
             >
               Cancelar
             </button>
             <button
-              @click="confirmarCheckIn"
               :disabled="confirmando"
               class="flex-2 h-12 px-8 text-sm font-medium rounded-sm transition-colors"
               :style="!confirmando
                 ? { background: 'var(--sapButton_Accept_Background)', color: 'var(--sapButton_Accept_TextColor)', border: 'none' }
                 : { background: 'var(--sapNeutralBackground)', color: 'var(--sapContent_LabelColor)', border: '1px solid var(--sapList_BorderColor)' }"
+              @click="confirmarCheckIn"
             >
-              <span v-if="confirmando" class="flex items-center gap-2">
+              <span
+                v-if="confirmando"
+                class="flex items-center gap-2"
+              >
                 <span class="sap-icon--refresh animate-spin" /> Registrando...
               </span>
               <span v-else>✓ Confirmar Devolución</span>
@@ -228,22 +319,32 @@
           class="p-8 rounded-sm border text-center space-y-4"
           :style="{ background: 'var(--sapSuccessBackground)', borderColor: 'var(--sapSuccessBorderColor)' }"
         >
-          <span class="sap-icon--accept text-5xl block" :style="{ color: 'var(--sapPositiveTextColor)' }" />
-          <h2 class="text-xl font-bold" :style="{ color: 'var(--sapTextColor)' }">¡Devolución registrada!</h2>
-          <p class="text-sm" :style="{ color: 'var(--sapContent_LabelColor)' }">
+          <span
+            class="sap-icon--accept text-5xl block"
+            :style="{ color: 'var(--sapPositiveTextColor)' }"
+          />
+          <h2
+            class="text-xl font-bold"
+            :style="{ color: 'var(--sapTextColor)' }"
+          >
+            ¡Devolución registrada!
+          </h2>
+          <p
+            class="text-sm"
+            :style="{ color: 'var(--sapContent_LabelColor)' }"
+          >
             La herramienta
             <strong :style="{ color: 'var(--sapTextColor)' }">{{ ultimaHerramienta }}</strong>
             fue recibida correctamente.
           </p>
           <button
-            @click="resetOperacion"
             class="w-full h-12 text-sm font-medium rounded-sm transition-colors"
             :style="{ background: 'var(--sapButton_Emphasized_Background)', color: 'var(--sapButton_Emphasized_TextColor)', border: 'none' }"
+            @click="resetOperacion"
           >
             <span class="sap-icon--refresh mr-2" /> Siguiente Devolución
           </button>
         </div>
-
       </div>
     </div>
   </div>

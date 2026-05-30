@@ -14,7 +14,6 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql           # DDL + RBAC
-      - ./backend/sql/seeds_desarrollo.sql:/docker-entrypoint-initdb.d/02_seeds.sql  # Datos desarrollo
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sermul_user} -d ${POSTGRES_DB:-sermul_db}"]
       interval: 5s

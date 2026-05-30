@@ -20,6 +20,7 @@ def test_workflow_completo_reserva(client, auth_header_lider, auth_header_reside
     }
     
     response = client.post("/api/reservas/", json=reserva_in, headers=auth_header_lider)
+    print("RESPONSE", response.text)
     assert response.status_code == 201
     reserva = response.json()
     assert reserva["estado"] == "Pendiente"

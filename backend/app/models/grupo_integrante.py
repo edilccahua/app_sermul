@@ -27,6 +27,9 @@ class GrupoIntegrante(Base):
     )
     fecha_salida: Mapped[date | None] = mapped_column(Date)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    es_lider_frente: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    grupo: Mapped["GrupoTrabajo"] = relationship("GrupoTrabajo", lazy="joined")
+    grupo: Mapped["GrupoTrabajo"] = relationship(
+        "GrupoTrabajo", back_populates="integrantes", lazy="joined"
+    )
     usuario: Mapped["Usuario"] = relationship("Usuario", lazy="joined")

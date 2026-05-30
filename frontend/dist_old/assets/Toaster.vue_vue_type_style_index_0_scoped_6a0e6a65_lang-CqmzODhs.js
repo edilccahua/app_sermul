@@ -1,0 +1,1 @@
+import{Q as r}from"./index-B0UX0QyF.js";const s=r([]);let d=0;function c(){function u({title:e,description:t="",variant:i="default",duration:a=3500}){const n=++d;return s.value.push({id:n,title:e,description:t,variant:i}),setTimeout(()=>o(n),a),n}function o(e){const t=s.value.findIndex(i=>i.id===e);t!==-1&&s.value.splice(t,1)}return{toast:u,dismiss:o,toasts:s}}export{c as u};

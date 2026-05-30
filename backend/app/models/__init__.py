@@ -9,6 +9,7 @@ from .grupo_trabajo import GrupoTrabajo
 from .grupo_integrante import GrupoIntegrante
 from .reserva import Reserva
 from .reserva_detalle import ReservaDetalle
+from .especialidad_tecnica import EspecialidadTecnica
 
 __all__ = [
     "Usuario",
@@ -23,4 +24,5 @@ __all__ = [
     "GrupoIntegrante",
     "Reserva",
     "ReservaDetalle",
+    "EspecialidadTecnica",
 ]

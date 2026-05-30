@@ -11,8 +11,8 @@
           t.variant === 'success'
             ? 'bg-[var(--sapSuccessBackground)] border border-[var(--sapSuccessBorderColor)] text-[var(--sapPositiveTextColor)]'
             : toastVariant === 'error'
-            ? 'bg-[var(--sapErrorBackground)] border border-[var(--sapErrorBorderColor)] text-[var(--sapNegativeTextColor)]'
-            : 'bg-card border-border text-foreground',
+              ? 'bg-[var(--sapErrorBackground)] border border-[var(--sapErrorBorderColor)] text-[var(--sapNegativeTextColor)]'
+              : 'bg-card border-border text-foreground',
         ]"
       >
         <!-- Icono según variante -->
@@ -22,14 +22,23 @@
           <span v-else>ℹ</span>
         </span>
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold">{{ t.title }}</p>
-          <p v-if="t.description" class="text-xs opacity-80 mt-0.5">{{ t.description }}</p>
+          <p class="text-sm font-semibold">
+            {{ t.title }}
+          </p>
+          <p
+            v-if="t.description"
+            class="text-xs opacity-80 mt-0.5"
+          >
+            {{ t.description }}
+          </p>
         </div>
         <button
-          @click="dismiss(t.id)"
           class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity text-sm ml-1"
           tabindex="-1"
-        >✕</button>
+          @click="dismiss(t.id)"
+        >
+          ✕
+        </button>
       </div>
     </TransitionGroup>
   </div>

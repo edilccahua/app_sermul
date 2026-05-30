@@ -2,9 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './fiori-utilities.css';
+
 /* ── Destrucción de geometría shadcn → Fiori 2px ── */
 :root {
   --radius: 0.125rem;
+  --sapShell_HoverBackground: rgba(0,0,0,0.08);
+  --sapShell_SearchBackground: rgba(0,0,0,0.06);
+  --sapShell_SearchBorderColor: rgba(0,0,0,0.12);
+  --sapChart_Fill_Error: color-mix(in srgb, var(--sapNegativeTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Information: color-mix(in srgb, var(--sapInformationTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Success: color-mix(in srgb, var(--sapPositiveTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Neutral: color-mix(in srgb, var(--sapNeutralTextColor) 25%, var(--sapGroup_ContentBackground));
 }
 
 /* ── Tipografía SAP 72 ── */
@@ -59,7 +68,19 @@ html {
   --sapField_PlaceholderTextColor: #8396a8;
   --sapGroup_ContentBackground: #1d232a;
   --sapList_BorderColor: #2e3742;
+  --sapList_HeaderBackground: #1d232a;
+  --sapList_ActiveBackground: #2e3742;
+  --sapList_SelectionBackgroundColor: #2a3643;
   --sapShell_Background: #12171c;
+  --sapShell_TextColor: #f5f6f7;
+  --sapShell_InteractiveTextColor: rgba(245,246,247,0.7);
+  --sapShell_HoverBackground: rgba(255,255,255,0.12);
+  --sapShell_SearchBackground: rgba(255,255,255,0.06);
+  --sapShell_SearchBorderColor: rgba(255,255,255,0.10);
+  --sapChart_Fill_Error: color-mix(in srgb, var(--sapNegativeTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Information: color-mix(in srgb, var(--sapInformationTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Success: color-mix(in srgb, var(--sapPositiveTextColor) 25%, var(--sapGroup_ContentBackground));
+  --sapChart_Fill_Neutral: color-mix(in srgb, var(--sapNeutralTextColor) 25%, var(--sapGroup_ContentBackground));
   --sapPageHeader_Background: #1d232a;
   --sapObjectHeader_Background: #1d232a;
   --sapTile_Background: #1d232a;

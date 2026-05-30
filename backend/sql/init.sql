@@ -37,6 +37,19 @@ CREATE TABLE roles_permisos (
     PRIMARY KEY (rol_id, permiso_id)
 );
 
+-- ============================================================================
+-- SECCIÓN A-bis: ESPECIALIDADES TÉCNICAS
+-- ============================================================================
+
+CREATE TABLE especialidad_tecnica (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) UNIQUE NOT NULL,
+    creado_por_id INT,
+    actualizado_por_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE usuarios (
     id SERIAL PRIMARY KEY,
     dni VARCHAR(20) UNIQUE NOT NULL,
@@ -46,8 +59,11 @@ CREATE TABLE usuarios (
     telefono VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
     rol_id INT NOT NULL REFERENCES roles(id),
+    especialidad_id INT REFERENCES especialidad_tecnica(id),
     activo BOOLEAN DEFAULT true,
     ultimo_acceso TIMESTAMP,
+    creado_por_id INT REFERENCES usuarios(id),
+    actualizado_por_id INT REFERENCES usuarios(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -55,6 +71,12 @@ CREATE TABLE usuarios (
 CREATE INDEX idx_usuarios_dni ON usuarios(dni);
 CREATE INDEX idx_usuarios_rol ON usuarios(rol_id);
 CREATE INDEX idx_usuarios_activo ON usuarios(activo) WHERE activo = true;
+
+-- FK de especialidad_tecnica a usuarios (circular, requiere ALTER posterior)
+ALTER TABLE especialidad_tecnica ADD CONSTRAINT fk_especialidad_creado_por
+    FOREIGN KEY (creado_por_id) REFERENCES usuarios(id);
+ALTER TABLE especialidad_tecnica ADD CONSTRAINT fk_especialidad_actualizado_por
+    FOREIGN KEY (actualizado_por_id) REFERENCES usuarios(id);
 
 -- ============================================================================
 -- SECCIÓN B: PARADAS DE PLANTA
@@ -67,7 +89,12 @@ CREATE TABLE paradas (
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE,  -- NULL mientras esté activa
     estado VARCHAR(20) NOT NULL DEFAULT 'Planificada',
-    observaciones TEXT,
+    empresa_contratista VARCHAR(200) DEFAULT 'SERMUL EIRL' NOT NULL,
+    gerencia_contrato VARCHAR(200),
+    responsable_cma VARCHAR(200),
+    ubicacion VARCHAR(100),
+    creado_por_id INT REFERENCES usuarios(id),
+    actualizado_por_id INT REFERENCES usuarios(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_estado_parada CHECK (estado IN ('Planificada', 'Activa', 'Finalizada'))
@@ -85,13 +112,12 @@ CREATE TABLE grupos_trabajo (
     codigo VARCHAR(20) NOT NULL,  -- GRP-001. Nombres reusables entre paradas
     nombre VARCHAR(150) NOT NULL,
     parada_id INT NOT NULL REFERENCES paradas(id),
-    lider_id INT NOT NULL REFERENCES usuarios(id),
-    supervisor_id INT NOT NULL REFERENCES usuarios(id),
-    estado VARCHAR(20) DEFAULT 'Activo',
     descripcion TEXT,
+    circuito_area VARCHAR(200),
+    creado_por_id INT REFERENCES usuarios(id),
+    actualizado_por_id INT REFERENCES usuarios(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_estado_grupo CHECK (estado IN ('Activo', 'Inactivo', 'Finalizado')),
     UNIQUE (codigo, parada_id)  -- Mismo código reusable en diferente parada
 );
 
@@ -102,15 +128,13 @@ CREATE TABLE grupos_integrantes (
     fecha_ingreso DATE NOT NULL DEFAULT CURRENT_DATE,
     fecha_salida DATE,
     activo BOOLEAN DEFAULT true,
+    es_lider_frente BOOLEAN DEFAULT false,
     CONSTRAINT chk_fechas_integrante CHECK (fecha_salida IS NULL OR fecha_salida >= fecha_ingreso)
 );
 
--- Evitar duplicado: un usuario solo puede estar activo una vez en el mismo grupo
-CREATE UNIQUE INDEX idx_grupo_usuario_activo_unico 
-    ON grupos_integrantes(grupo_id, usuario_id) WHERE activo = true;
-
 CREATE INDEX idx_grupos_parada ON grupos_trabajo(parada_id);
 CREATE INDEX idx_grupos_integrantes_activos ON grupos_integrantes(grupo_id, activo) WHERE activo = true;
+CREATE INDEX idx_grupo_lider ON grupos_integrantes(grupo_id, es_lider_frente) WHERE es_lider_frente = true;
 
 -- ============================================================================
 -- SECCIÓN D: CATÁLOGO DE MATERIALES
@@ -127,12 +151,17 @@ CREATE TABLE categorias_materiales (
 
 CREATE TABLE catalogo_materiales (
     id SERIAL PRIMARY KEY,
-    codigo_interno VARCHAR(15) UNIQUE NOT NULL,  -- Short code mnemotécnico TIPO-MARCA: TALELC-BOSCH, AMOLAN-BOSCH
+    codigo_interno VARCHAR(15) NOT NULL,  -- Short code mnemotécnico TIPO-MARCA: TALELC-BOSCH, AMOLAN-BOSCH
     nombre VARCHAR(200) NOT NULL,
     descripcion TEXT,
     categoria_id INT NOT NULL REFERENCES categorias_materiales(id),
     tipo_material VARCHAR(30) NOT NULL,
     
+    -- Campos de identificación
+    marca VARCHAR(100),
+    modelo VARCHAR(100),
+    fecha_ingreso DATE DEFAULT CURRENT_DATE,
+
     -- Campos económicos
     costo_reposicion DECIMAL(10, 2),
     moneda VARCHAR(3) DEFAULT 'PEN',
@@ -141,22 +170,22 @@ CREATE TABLE catalogo_materiales (
     -- Campos específicos para EPPs
     vida_util_dias INT,
     requiere_certificacion BOOLEAN DEFAULT false,
-    requiere_inspeccion BOOLEAN DEFAULT false,
-    certificacion_norma VARCHAR(100),
     
     -- Control de inventario
     es_devolutivo BOOLEAN NOT NULL,
     stock_minimo INT,
     unidad_medida VARCHAR(20),
+    talla VARCHAR(20),
 
     -- Contadores de stock (Sprint 2.8: modelo por cantidad)
-    cantidad INT NOT NULL DEFAULT 0,
     cant_disponible INT NOT NULL DEFAULT 0,
     cant_en_uso INT NOT NULL DEFAULT 0,
     cant_malograda INT NOT NULL DEFAULT 0,
     cant_perdida INT NOT NULL DEFAULT 0,
     
     -- Metadata
+    creado_por_id INT REFERENCES usuarios(id),
+    actualizado_por_id INT REFERENCES usuarios(id),
     imagen_url VARCHAR(500),
     activo BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -165,7 +194,9 @@ CREATE TABLE catalogo_materiales (
     CONSTRAINT chk_tipo_material CHECK (tipo_material IN ('HERRAMIENTA_DEVOLUTIVA', 'EPP_DEVOLUTIVO', 'EPP_CONSUMIBLE', 'CONSUMIBLE'))
 );
 
-CREATE INDEX idx_catalogo_codigo ON catalogo_materiales(codigo_interno);
+-- Índice único parcial: permite soft-delete sin colisión de códigos (C-07)
+CREATE UNIQUE INDEX idx_catalogo_codigo_activo
+    ON catalogo_materiales(codigo_interno) WHERE activo = true;
 CREATE INDEX idx_catalogo_nombre_trgm ON catalogo_materiales USING gin (nombre gin_trgm_ops);
 CREATE INDEX idx_catalogo_categoria ON catalogo_materiales(categoria_id);
 CREATE INDEX idx_catalogo_activo ON catalogo_materiales(activo) WHERE activo = true;
@@ -216,10 +247,9 @@ CREATE TABLE reservas (
     parada_id INT NOT NULL REFERENCES paradas(id),
     grupo_id INT NOT NULL REFERENCES grupos_trabajo(id),
     creado_por_id INT NOT NULL REFERENCES usuarios(id),
-    tarea_id INT,
     
     -- Programación
-    turno VARCHAR(10) NOT NULL,
+    turno VARCHAR(10),
     fecha_programada DATE NOT NULL,
     
     -- Estado del flujo
@@ -227,6 +257,7 @@ CREATE TABLE reservas (
     aprobado_por_id INT REFERENCES usuarios(id),
     fecha_aprobacion TIMESTAMP,
     despachado_por_id INT REFERENCES usuarios(id),
+    actualizado_por_id INT REFERENCES usuarios(id),
     fecha_despacho TIMESTAMP,
     motivo_rechazo TEXT,
     
@@ -234,7 +265,6 @@ CREATE TABLE reservas (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT chk_turno CHECK (turno IN ('Dia', 'Noche')),
     CONSTRAINT chk_estado_reserva CHECK (estado IN ('Pendiente', 'Aprobada', 'Rechazada', 'Despachada', 'Cancelada'))
 );
 
@@ -274,8 +304,7 @@ CREATE TABLE historial_movimientos (
     usuario_receptor_id INT REFERENCES usuarios(id),
     
     -- Contexto (NULLABLE en v1)
-    tarea_id INT,
-    reserva_id INT,
+    reserva_id INT REFERENCES reservas(id),
     
     -- Estados (para auditoría)
     estado_origen VARCHAR(20),
@@ -309,16 +338,8 @@ CREATE INDEX idx_historial_grupo ON historial_movimientos(grupo_destino_id);
 CREATE INDEX idx_historial_tipo ON historial_movimientos(tipo_movimiento);
 
 -- ============================================================================
--- SECCIÓN I: TAREAS Y TRABAJOS DE RIESGO
+-- SECCIÓN I: RIESGOS Y PETARs (Post-MVP)
 -- ============================================================================
-
-CREATE TABLE tipos_actividades (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(150) UNIQUE NOT NULL,
-    descripcion TEXT,
-    activo BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE tipos_riesgos (
     id SERIAL PRIMARY KEY,
@@ -344,75 +365,8 @@ CREATE TABLE petars (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE tareas (
-    id SERIAL PRIMARY KEY,
-    codigo_tarea VARCHAR(30) UNIQUE NOT NULL,
-    nombre VARCHAR(200) NOT NULL,
-    descripcion TEXT,
-    tipo_actividad_id INT NOT NULL REFERENCES tipos_actividades(id),
-    parada_id INT NOT NULL REFERENCES paradas(id),
-    grupo_id INT NOT NULL REFERENCES grupos_trabajo(id),
-    
-    -- Programación
-    fecha_programada DATE NOT NULL,
-    duracion_estimada_horas DECIMAL(5, 2),
-    prioridad VARCHAR(10) DEFAULT 'Media',
-    estado VARCHAR(20) DEFAULT 'Planificada',
-    
-    -- Responsables
-    creado_por_id INT NOT NULL REFERENCES usuarios(id),
-    responsable_antapaccay_nombre VARCHAR(200),
-    responsable_antapaccay_cargo VARCHAR(200),
-    responsable_antapaccay_contacto VARCHAR(100),
-    
-    -- Fechas de ejecución
-    fecha_inicio_real TIMESTAMP,
-    fecha_fin_real TIMESTAMP,
-    
-    -- Metadata
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT chk_prioridad CHECK (prioridad IN ('Alta', 'Media', 'Baja')),
-    CONSTRAINT chk_estado_tarea CHECK (estado IN ('Planificada', 'En_Ejecucion', 'Completada', 'Cancelada'))
-);
-
-CREATE TABLE tareas_riesgos (
-    tarea_id INT NOT NULL REFERENCES tareas(id) ON DELETE CASCADE,
-    tipo_riesgo_id INT NOT NULL REFERENCES tipos_riesgos(id) ON DELETE CASCADE,
-    PRIMARY KEY (tarea_id, tipo_riesgo_id)
-);
-
-CREATE TABLE tareas_epps_requeridos (
-    id SERIAL PRIMARY KEY,
-    tarea_id INT NOT NULL REFERENCES tareas(id) ON DELETE CASCADE,
-    catalogo_id INT NOT NULL REFERENCES catalogo_materiales(id),
-    cantidad_requerida INT DEFAULT 1,
-    UNIQUE (tarea_id, catalogo_id)
-);
-
-CREATE INDEX idx_tareas_parada ON tareas(parada_id);
-CREATE INDEX idx_tareas_grupo ON tareas(grupo_id);
-CREATE INDEX idx_tareas_fecha ON tareas(fecha_programada);
-CREATE INDEX idx_tareas_estado ON tareas(estado);
-CREATE INDEX idx_tareas_nombre_trgm ON tareas USING gin (nombre gin_trgm_ops);
-CREATE INDEX idx_tareas_descripcion_trgm ON tareas USING gin (descripcion gin_trgm_ops);
-
 -- ============================================================================
--- SECCIÓN J: FOREIGN KEYS FALTANTES
--- ============================================================================
-
-ALTER TABLE historial_movimientos ADD CONSTRAINT fk_historial_tarea
-    FOREIGN KEY (tarea_id) REFERENCES tareas(id);
-
-ALTER TABLE historial_movimientos ADD CONSTRAINT fk_historial_reserva
-    FOREIGN KEY (reserva_id) REFERENCES reservas(id);
-
-ALTER TABLE reservas ADD CONSTRAINT fk_reserva_tarea
-    FOREIGN KEY (tarea_id) REFERENCES tareas(id);
-
--- ============================================================================
--- SECCIÓN K: TRIGGERS Y FUNCIONES
+-- SECCIÓN J: TRIGGERS Y FUNCIONES
 -- ============================================================================
 
 -- Trigger: Actualizar updated_at automáticamente
@@ -436,7 +390,10 @@ CREATE TRIGGER update_grupos_updated_at BEFORE UPDATE ON grupos_trabajo
 CREATE TRIGGER update_catalogo_updated_at BEFORE UPDATE ON catalogo_materiales
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_tareas_updated_at BEFORE UPDATE ON tareas
+CREATE TRIGGER update_especialidad_updated_at BEFORE UPDATE ON especialidad_tecnica
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_reservas_updated_at BEFORE UPDATE ON reservas
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Función: Auto-marcar pérdidas 3 días después del cierre de parada
@@ -500,7 +457,7 @@ SELECT
     cm.tipo_material,
     cm.costo_reposicion,
     cm.moneda,
-    cm.cantidad,
+    (cm.cant_disponible + cm.cant_en_uso + cm.cant_malograda + cm.cant_perdida) AS cantidad_total,
     cm.cant_disponible,
     cm.cant_en_uso,
     cm.cant_malograda,
@@ -509,6 +466,7 @@ FROM catalogo_materiales cm
 JOIN categorias_materiales cat ON cm.categoria_id = cat.id;
 
 -- Vista: Herramientas en uso por grupo (Sprint 2.8: sin inventario_fisico)
+DROP VIEW IF EXISTS v_herramientas_en_uso;
 CREATE VIEW v_herramientas_en_uso AS
 SELECT 
     g.id AS grupo_id,
@@ -519,6 +477,8 @@ SELECT
     cm.id AS catalogo_id,
     cm.codigo_interno,
     cm.nombre AS nombre_herramienta,
+    cm.descripcion,
+    cm.marca,
     cm.costo_reposicion,
     SUM(h.cantidad) AS cantidad_en_uso,
     MAX(h.timestamp) AS ultima_entrega,
@@ -535,7 +495,7 @@ WHERE h.tipo_movimiento = 'Entrega'
         AND h2.tipo_movimiento IN ('Devolucion', 'Perdida', 'Paso_Mantenimiento')
         AND h2.timestamp > h.timestamp
   )
-GROUP BY g.id, g.codigo, g.nombre, p.id, p.nombre, cm.id, cm.codigo_interno, cm.nombre, cm.costo_reposicion
+GROUP BY g.id, g.codigo, g.nombre, p.id, p.nombre, cm.id, cm.codigo_interno, cm.nombre, cm.descripcion, cm.marca, cm.costo_reposicion
 HAVING SUM(h.cantidad) > 0;
 
 -- Vista: Dashboard de métricas (Sprint 2.8: desde catalogo_materiales)
@@ -547,7 +507,7 @@ SELECT
     SUM(cm.cant_malograda) AS malogradas,
     SUM(cm.cant_perdida) AS perdidas,
     SUM(cm.cant_perdida * cm.costo_reposicion) AS costo_total_perdidas,
-    SUM(cm.cantidad * cm.costo_reposicion) AS costo_total_inventario
+    SUM((cm.cant_disponible + cm.cant_en_uso + cm.cant_malograda + cm.cant_perdida) * cm.costo_reposicion) AS costo_total_inventario
 FROM catalogo_materiales cm;
 
 -- Vista: Pendientes de cierre por parada activa
@@ -607,7 +567,7 @@ WHERE h.tipo_movimiento = 'Perdida'
 GROUP BY p.id, p.codigo, p.nombre, cm.id, cm.codigo_interno, cm.nombre, cm.costo_reposicion, g.nombre, g.id;
 
 -- ============================================================================
--- SECCIÓN M: DATOS SEMILLA
+-- SECCIÓN M: RBAC (Roles y Permisos)
 -- ============================================================================
 
 -- Insertar Roles
@@ -634,7 +594,6 @@ INSERT INTO permisos (codigo, nombre, modulo) VALUES
 ('CERRAR_PARADA', 'Cerrar paradas', 'Paradas'),
 ('GESTIONAR_GRUPOS', 'Crear/editar grupos', 'Grupos'),
 ('IMPORTAR_EXCEL', 'Cargar grupos por Excel', 'Grupos'),
-('CREAR_TAREA', 'Crear tareas', 'Tareas'),
 ('ASIGNAR_GRUPO', 'Asignar trabajadores a grupos', 'Tareas'),
 ('SUBIR_PETAR', 'Subir PETARs', 'PETARs'),
 ('VER_PETAR', 'Ver PETARs', 'PETARs'),
@@ -660,7 +619,7 @@ WHERE codigo NOT IN ('CONFIG_SISTEMA', 'CERRAR_PARADA', 'CREAR_PARADA');
 -- Asignar permisos a Supervisor Mecánico
 INSERT INTO roles_permisos (rol_id, permiso_id)
 SELECT (SELECT id FROM roles WHERE codigo = 'SUP_MEC'), id FROM permisos
-WHERE codigo IN ('VER_INVENTARIO', 'CREAR_RESERVA', 'VER_DASHBOARD_GRUPO', 'VER_PETAR', 'CREAR_TAREA', 'ASIGNAR_GRUPO');
+WHERE codigo IN ('VER_INVENTARIO', 'CREAR_RESERVA', 'VER_DASHBOARD_GRUPO', 'VER_PETAR', 'ASIGNAR_GRUPO');
 
 -- Asignar permisos a Supervisor SSOMA
 INSERT INTO roles_permisos (rol_id, permiso_id)
@@ -675,67 +634,7 @@ WHERE codigo IN ('VER_INVENTARIO', 'CREAR_RESERVA', 'VER_DASHBOARD_GRUPO', 'VER_
 -- Asignar permisos a Trabajador
 INSERT INTO roles_permisos (rol_id, permiso_id)
 SELECT (SELECT id FROM roles WHERE codigo = 'TRABAJADOR'), id FROM permisos
-WHERE codigo IN ('VER_PETAR');
-
--- Crear usuarios de prueba
--- NOTA: Los password_hash son placeholders. Generar con passlib.hash.bcrypt antes de usar.
--- Ejemplo: python -c "from passlib.hash import bcrypt; print(bcrypt.hash('admin123'))"
-
--- Contraseñas de prueba (SOLO para desarrollo, cambiar en producción):
--- carlos.rodriguez → admin123
--- admin             → admin123
--- juan.perez        → almacen123
-INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id) VALUES
-('12345678', 'Carlos', 'Rodríguez', 'carlos.rodriguez@sermul.pe', 
- '$2b$12$rc3qP35fMrn0kWU.7zZssOhaaGHVjPu3.gb2mMIb8iI.382DcBIEe',  -- admin123
- (SELECT id FROM roles WHERE codigo = 'RESIDENTE'));
-
-INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id) VALUES
-('87654321', 'Sistema', 'Admin', 'admin@sermul.pe',
- '$2b$12$rc3qP35fMrn0kWU.7zZssOhaaGHVjPu3.gb2mMIb8iI.382DcBIEe',  -- admin123
- (SELECT id FROM roles WHERE codigo = 'ADMIN'));
-
-INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id) VALUES
-('11223344', 'Juan', 'Pérez', 'juan.perez@sermul.pe',
- '$2b$12$tf4rSDYGVmiTckAtyKjQSu2YY0e7Ou3TiDKxzu1T.izb8svBJdor.',  -- almacen123
- (SELECT id FROM roles WHERE codigo = 'ALMACENERO'));
-
--- ============================================================================
--- DATOS SEMILLA — Estructura organizacional (no sensible)
--- Usuarios, catálogo, inventario y movimientos → seeds_desarrollo.sql
--- ============================================================================
-
--- Insertar Categorías
-INSERT INTO categorias_materiales (nombre, tipo_general) VALUES
-('Herramientas Eléctricas', 'Herramienta'),
-('Herramientas Manuales', 'Herramienta'),
-('Herramientas Neumáticas', 'Herramienta'),
-('Herramientas Hidráulicas', 'Herramienta'),
-('Equipos de Izaje', 'Herramienta'),
-('EPP - Protección de Cabeza', 'EPP'),
-('EPP - Protección de Manos', 'EPP'),
-('EPP - Protección Respiratoria', 'EPP'),
-('EPP - Trabajo en Altura', 'EPP'),
-('Consumibles Generales', 'Consumible');
-
--- Insertar Tipos de Riesgos
-INSERT INTO tipos_riesgos (codigo, nombre, requiere_supervision_ssoma, color_hex) VALUES
-('TRAB_ALTURA', 'Trabajo en Altura (> 1.80m)', true, '#FF5733'),
-('ESP_CONFINADO', 'Espacio Confinado', true, '#C70039'),
-('TRAB_CALIENTE', 'Trabajo en Caliente (soldadura/corte)', true, '#FFC300'),
-('ENERG_PELIGROSA', 'Energías Peligrosas', true, '#DAF7A6'),
-('QUIMICOS', 'Manejo de Químicos', true, '#900C3F');
-
--- Insertar PETARs de ejemplo
-INSERT INTO petars (codigo, nombre, tipo_riesgo_id, version, fecha_actualizacion, archivo_pdf_url, aprobado_por) VALUES
-('PETAR-001', 'Procedimiento de Trabajo en Altura', 
- (SELECT id FROM tipos_riesgos WHERE codigo = 'TRAB_ALTURA'),
- 'v2.1', '2026-03-01', '/static/petars/petar-001-v2.1.pdf', 
- 'Ing. María González - Supervisor SSOMA Antapaccay'),
-('PETAR-002', 'Bloqueo y Etiquetado de Energías (LOTO)', 
- (SELECT id FROM tipos_riesgos WHERE codigo = 'ENERG_PELIGROSA'),
- 'v1.8', '2026-02-15', '/static/petars/petar-002-v1.8.pdf', 
- 'Ing. Pedro Castro - Gerente SSOMA Antapaccay');
+WHERE codigo IN ('VER_PETAR', 'VER_INVENTARIO');
 
 -- ============================================================================
 -- FIN DEL SCRIPT DDL
@@ -745,3 +644,9 @@ COMMENT ON TABLE paradas IS 'Entidad principal. Agrupa toda la actividad de un m
 COMMENT ON TABLE historial_movimientos IS 'Log de movimientos. Sprint 2.8: control por cantidad, sin inventario_fisico. Particionado por año.';
 COMMENT ON COLUMN catalogo_materiales.codigo_interno IS 'Short code formato TIPO-MARCA para digitación manual rápida (máx 15 caracteres).';
 COMMENT ON COLUMN catalogo_materiales.es_devolutivo IS 'true=herramienta/EPP que se entrega y devuelve, false=consumible de uso único.';
+
+-- ============================================================================
+-- USUARIO ADMIN INICIAL
+-- ============================================================================
+INSERT INTO usuarios (dni, nombre, apellido, password_hash, rol_id) 
+VALUES ('12345678', 'ADMIN', 'ADMIN', '$2b$12$1dSaPV57.9rCqMKJyKFNquoa54F0lnKJG4CK0bFQbF2Tpm3REz.1y', (SELECT id FROM roles WHERE codigo='ADMIN'));

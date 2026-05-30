@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..core.database import get_db
@@ -8,7 +8,11 @@ from .deps import RequirePermission
 
 router = APIRouter()
 
+
 @router.get("/residente", response_model=DashboardResidenteResponse, dependencies=[Depends(RequirePermission("VER_DASHBOARD_COMPLETO"))])
-def get_dashboard_residente(db: Session = Depends(get_db)):
+def get_dashboard_residente(
+    parada_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
     service = DashboardService(db)
-    return service.get_residente_kpis()
+    return service.get_residente_kpis(parada_id)

@@ -22,13 +22,13 @@ class Reserva(Base):
     parada_id: Mapped[int] = mapped_column(ForeignKey("paradas.id"), nullable=False)
     grupo_id: Mapped[int] = mapped_column(ForeignKey("grupos_trabajo.id"), nullable=False)
     creado_por_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
-    tarea_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    turno: Mapped[str] = mapped_column(String(10), nullable=False)  # Dia / Noche
+    turno: Mapped[str | None] = mapped_column(String(10), nullable=True)  # Dia / Noche
     fecha_programada: Mapped[date] = mapped_column(Date, nullable=False)
     estado: Mapped[str] = mapped_column(String(20), default="Pendiente")
     aprobado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     fecha_aprobacion: Mapped[datetime | None] = mapped_column(DateTime)
     despachado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    actualizado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     fecha_despacho: Mapped[datetime | None] = mapped_column(DateTime)
     motivo_rechazo: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
@@ -39,4 +39,5 @@ class Reserva(Base):
     creado_por: Mapped["Usuario"] = relationship("Usuario", foreign_keys=[creado_por_id], lazy="joined")
     aprobado_por: Mapped["Usuario | None"] = relationship("Usuario", foreign_keys=[aprobado_por_id], lazy="joined")
     despachado_por: Mapped["Usuario | None"] = relationship("Usuario", foreign_keys=[despachado_por_id], lazy="joined")
+    actualizado_por: Mapped["Usuario | None"] = relationship("Usuario", foreign_keys=[actualizado_por_id], lazy="joined")
     detalles: Mapped[list["ReservaDetalle"]] = relationship("ReservaDetalle", lazy="joined")

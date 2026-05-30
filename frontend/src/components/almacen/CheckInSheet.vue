@@ -1,6 +1,13 @@
 <template>
-  <Sheet :open="open" @update:open="$emit('update:open', $event)">
-    <SheetContent side="right" class="w-[420px] sm:w-[500px] flex flex-col" @open-auto-focus.prevent>
+  <Sheet
+    :open="open"
+    @update:open="$emit('update:open', $event)"
+  >
+    <SheetContent
+      side="right"
+      class="w-[420px] sm:w-[500px] flex flex-col"
+      @open-auto-focus.prevent
+    >
       <SheetHeader class="pb-4 border-b border-border">
         <SheetTitle class="flex items-center gap-2">
           <span class="sap-icon--sys-back w-5 h-5 flex items-center justify-center text-[var(--sapPositiveTextColor)]" />
@@ -22,21 +29,30 @@
               v-model="query"
               placeholder="ej: HER-001 — busca unidades En_Uso"
               class="flex h-11 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--sapSuccessBorderColor)] transition-all"
-              @keyup.escape="resetSheet"
               autocomplete="off"
               autofocus
-            />
-            <span v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
+              @keyup.escape="resetSheet"
+            >
+            <span
+              v-if="loading"
+              class="absolute right-3 top-1/2 -translate-y-1/2"
+            >
               <span class="sap-icon--refresh w-4 h-4 flex items-center justify-center animate-spin text-[var(--sapContent_LabelColor)]" />
             </span>
           </div>
-          <p v-if="error" class="text-xs text-[var(--sapNegativeTextColor)] flex items-center gap-1">
+          <p
+            v-if="error"
+            class="text-xs text-[var(--sapNegativeTextColor)] flex items-center gap-1"
+          >
             <span class="sap-icon--warning w-3.5 h-3.5 flex items-center justify-center" />{{ error }}
           </p>
         </div>
 
         <!-- ② RESULTADOS: unidades En_Uso para devolver -->
-        <div v-if="unidadesEnUso.length > 0" class="space-y-2">
+        <div
+          v-if="unidadesEnUso.length > 0"
+          class="space-y-2"
+        >
           <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide">
             Selecciona la unidad a devolver
           </p>
@@ -44,16 +60,18 @@
             <button
               v-for="u in unidadesEnUso"
               :key="u.id"
-              @click="seleccionarUnidad(u)"
               :class="[
                 'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b border-border last:border-0',
                 unidadSeleccionada?.id === u.id
                   ? 'bg-[var(--sapSuccessBackground)] border-l-2 border-l-[var(--sapSuccessBorderColor)]'
                   : 'hover:bg-muted/30',
               ]"
+              @click="seleccionarUnidad(u)"
             >
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium">{{ u.catalogo?.nombre }}</p>
+                <p class="text-sm font-medium">
+                  {{ u.catalogo?.nombre }}
+                </p>
                 <p class="text-xs text-muted-foreground mt-0.5">
                   Unidad #{{ u.id }} · {{ u.ubicacion_fisica || 'Sin ubicación registrada' }}
                 </p>
@@ -66,42 +84,53 @@
         </div>
 
         <!-- Mensaje si no hay unidades en uso -->
-        <div v-else-if="query.length >= 2 && !loading && unidadesEnUso.length === 0 && results.length === 0"
-          class="rounded-lg border border-[var(--sapWarningBorderColor)] bg-[var(--sapWarningBackground)] p-4 text-sm text-[var(--sapWarningColor)]">
+        <div
+          v-else-if="query.length >= 2 && !loading && unidadesEnUso.length === 0 && results.length === 0"
+          class="rounded-lg border border-[var(--sapWarningBorderColor)] bg-[var(--sapWarningBackground)] p-4 text-sm text-[var(--sapWarningColor)]"
+        >
           No hay unidades de <code class="font-mono">{{ query }}</code> con estado En_Uso.
         </div>
 
         <!-- ③ INSPECCIÓN VISUAL — aparece al seleccionar unidad -->
-        <div v-if="unidadSeleccionada" class="space-y-4">
+        <div
+          v-if="unidadSeleccionada"
+          class="space-y-4"
+        >
           <div class="rounded-lg border border-border bg-card p-4">
-            <p class="text-sm font-semibold mb-1">{{ unidadSeleccionada.catalogo?.nombre }}</p>
-            <p class="text-xs text-muted-foreground">Unidad #{{ unidadSeleccionada.id }}</p>
+            <p class="text-sm font-semibold mb-1">
+              {{ unidadSeleccionada.catalogo?.nombre }}
+            </p>
+            <p class="text-xs text-muted-foreground">
+              Unidad #{{ unidadSeleccionada.id }}
+            </p>
           </div>
 
           <!-- Pregunta de inspección visual -->
           <div class="rounded-lg border border-border p-4 space-y-3">
-            <p class="text-sm font-semibold">¿Se devuelve en buen estado?</p>
+            <p class="text-sm font-semibold">
+              ¿Se devuelve en buen estado?
+            </p>
             <div class="flex gap-3">
               <button
-                @click="buenEstado = true; descripcionDano = ''"
                 :class="[
                   'flex-1 flex items-center justify-center gap-2 rounded-md border py-3 text-sm font-medium transition-colors min-h-[48px]',
                   buenEstado === true
                     ? 'border-[var(--sapSuccessBorderColor)] bg-[var(--sapSuccessBackground)] text-[var(--sapPositiveTextColor)]'
                     : 'border-border hover:bg-muted/30',
                 ]"
+                @click="buenEstado = true; descripcionDano = ''"
               >
                 <span class="sap-icon--accept w-5 h-5 flex items-center justify-center" />
                 Sí, buen estado
               </button>
               <button
-                @click="buenEstado = false"
                 :class="[
                   'flex-1 flex items-center justify-center gap-2 rounded-md border py-3 text-sm font-medium transition-colors min-h-[48px]',
                   buenEstado === false
                     ? 'border-[var(--sapErrorBorderColor)] bg-[var(--sapErrorBackground)] text-[var(--sapNegativeTextColor)]'
                     : 'border-border hover:bg-muted/30',
                 ]"
+                @click="buenEstado = false"
               >
                 <span class="sap-icon--decline w-5 h-5 flex items-center justify-center" />
                 No — Malograda
@@ -109,7 +138,10 @@
             </div>
 
             <!-- Descripción del daño (obligatoria si malograda) -->
-            <div v-if="buenEstado === false" class="space-y-1.5">
+            <div
+              v-if="buenEstado === false"
+              class="space-y-1.5"
+            >
               <label class="text-sm font-normal text-[var(--sapNegativeTextColor)]">Describe el daño *:</label>
               <textarea
                 v-model="descripcionDano"
@@ -125,13 +157,12 @@
       <!-- Footer -->
       <SheetFooter class="pt-4 border-t border-border gap-3">
         <button
-          @click="resetSheet"
           class="flex-1 rounded-sm border border-[var(--sapButton_BorderColor)] bg-[var(--sapButton_Background)] px-4 py-2.5 text-sm text-[var(--sapButton_TextColor)] hover:bg-[var(--sapButton_Hover_Background)] transition-colors min-h-[48px]"
+          @click="resetSheet"
         >
           Cancelar <kbd class="ml-1 text-xs opacity-50">Esc</kbd>
         </button>
         <button
-          @click="confirmarCheckIn"
           :disabled="!puedeConfirmar || confirmando"
           :class="[
             'flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-colors min-h-[48px]',
@@ -141,8 +172,12 @@
                 : 'bg-[var(--sapButton_Reject_Background)] hover:bg-[var(--sapButton_Reject_Hover_Background)] text-[var(--sapButton_Reject_TextColor)]'
               : 'bg-muted text-muted-foreground cursor-not-allowed opacity-50',
           ]"
+          @click="confirmarCheckIn"
         >
-          <span v-if="confirmando" class="flex items-center justify-center gap-2">
+          <span
+            v-if="confirmando"
+            class="flex items-center justify-center gap-2"
+          >
             <span class="sap-icon--refresh w-4 h-4 flex items-center justify-center animate-spin" />Registrando...
           </span>
           <span v-else-if="buenEstado === true">✓ Devolver — Buen Estado</span>

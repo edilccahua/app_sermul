@@ -8,5 +8,4 @@ dist
 *.md
 Dockerfile
 Dockerfile.dev
-nginx.conf
 .vscode

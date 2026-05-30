@@ -23,8 +23,6 @@ python-multipart>=0.0.6
 openpyxl>=3.1.2
 pandas>=2.1.0
 
-# -- Sprint 3: Tareas, Riesgos, PETARs
-# (sin nuevas dependencias — python-multipart ya instalado para PDFs)
+# -- Sprint 3: Perfil, Mi Grupo, Cierre de Parada, Cronjob
+apscheduler==3.10.4
 
-# -- Sprint 4: Cierre de parada, PWA, Offline sync
-# (sin nuevas dependencias backend — lógica en SQLAlchemy + triggers)

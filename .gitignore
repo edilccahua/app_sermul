@@ -14,5 +14,3 @@ backend/__pycache__/
 .DS_Store
 Thumbs.db
 
-backend/sql/seeds_desarrollo.sql
-backend/sql/seeds_masivo.sql

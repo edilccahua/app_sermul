@@ -53,22 +53,30 @@ export const catalogoAPI = {
 }
 
 // ─── Inventario (StockResponse) ────────────────────────────────────────────────
-// GET /api/inventario/                   → lista con filtros opcionales
-// GET /api/inventario/buscar?short_code= → búsqueda por short code (devuelve StockResponse[])
+// GET /api/inventario/                         → lista con filtros opcionales
+// GET /api/inventario/buscar?short_code=        → búsqueda por short code
+// GET /api/inventario/en-uso/grupo/{grupo_id}  → herramientas en uso de un grupo
 export const inventarioAPI = {
   get: (params = {}) => api.get('/inventario/', { params }),
   buscar: (shortCode) => api.get('/inventario/buscar', { params: { short_code: shortCode } }),
+  enUsoPorGrupo: (grupoId) => api.get(`/inventario/en-uso/grupo/${grupoId}`),
+  ajustarStock: (data) => api.post('/inventario/ajuste', data),
 }
 
 // ─── Check-in / Check-out ──────────────────────────────────────────────────────
-// POST /api/inventario/check-out → { catalogo_id, cantidad, grupo_id, parada_id, observacion_entrega? }
-//   Respuesta plana: { movimiento_id, tipo, catalogo_id, cantidad, mensaje }
-//
-// POST /api/inventario/check-in  → { catalogo_id, cant_buen_estado, cant_malograda, observacion_recepcion?, descripcion_dano? }
-//   Respuesta plana: { movimiento_id, tipo, catalogo_id, cantidad, mensaje }
+// POST /api/inventario/check-out              → checkout simple unitario
+// POST /api/inventario/check-in               → checkin simple unitario
+// POST /api/inventario/check-out-masivo       → checkout masivo (payload atómico)
+//   { grupo_id, parada_id, items: [{ catalogo_id, cantidad, observacion_entrega }] }
+//   Respuesta: { procesados, mensaje } — rollback total si cualquier item falla
+// POST /api/inventario/check-in-masivo        → checkin masivo (payload atómico)
+//   { grupo_id, parada_id, items: [{ catalogo_id, cantidad_devuelta, estado, observacion }] }
+//   Respuesta: { procesados, mensaje }
 export const almacenAPI = {
   checkOut: (data) => api.post('/inventario/check-out', data),
-  checkIn: (data) => api.post('/inventario/check-in', data),
+  checkIn:  (data) => api.post('/inventario/check-in', data),
+  checkOutMasivo: (data) => api.post('/inventario/check-out-masivo', data),
+  checkInMasivo:  (data) => api.post('/inventario/check-in-masivo', data),
 }
 
 // ─── Paradas ───────────────────────────────────────────────────────────────────
@@ -76,11 +84,15 @@ export const almacenAPI = {
 // GET  /api/paradas/:id  → detalle
 // POST /api/paradas      → crear (requiere CREAR_PARADA: RESIDENTE, ADMIN)
 // PUT  /api/paradas/:id  → editar (requiere CREAR_PARADA)
+// GET  /api/paradas/:id/simular-cierre → retorna pendientes sin modificar el estado
+// PUT  /api/paradas/:id/resolver-pendiente → resuelve faltantes y cierra la parada
 export const paradasAPI = {
   get: () => api.get('/paradas/'),
   getById: (id) => api.get(`/paradas/${id}`),
   create: (data) => api.post('/paradas/', data),
   update: (id, data) => api.put(`/paradas/${id}`, data),
+  simularCierre: (id) => api.get(`/paradas/${id}/simular-cierre`),
+  resolverPendiente: (id, resoluciones) => api.put(`/paradas/${id}/resolver-pendiente`, { resoluciones }),
 }
 
 // ─── Historial de Movimientos ──────────────────────────────────────────────────
@@ -89,6 +101,7 @@ export const paradasAPI = {
 //   Máx 500 registros, orden timestamp DESC
 export const historialAPI = {
   get: (params = {}) => api.get('/historial/', { params }),
+  getById: (id) => api.get(`/historial/${id}`),
 }
 
 // ─── Grupos de Trabajo ─────────────────────────────────────────────────────────
@@ -99,18 +112,21 @@ export const historialAPI = {
 // POST   /api/grupos/importar-excel           → upload .xlsx + parada_id (Form)
 // POST   /api/grupos/:id/integrantes          → agregar integrante
 // DELETE /api/grupos/:id/integrantes/:uid     → remover integrante
+// GET    /api/grupos/:id/integrantes/:uid/herramientas-en-uso → listar herramientas pendientes de devolución
 export const gruposAPI = {
-  get: (params = {}) => api.get('/grupos/', { params }),
+  get: (params) => api.get('/grupos/', { params }),
   getById: (id) => api.get(`/grupos/${id}`),
   create: (data) => api.post('/grupos/', data),
   update: (id, data) => api.put(`/grupos/${id}`, data),
-  importExcel: (formData) =>
-    api.post('/grupos/importar-excel', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  importarExcel: (formData) => api.post('/grupos/importar-excel', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   addIntegrante: (id, data) => api.post(`/grupos/${id}/integrantes`, data),
-  removeIntegrante: (id, usuarioId) =>
-    api.delete(`/grupos/${id}/integrantes/${usuarioId}`),
+  removeIntegrante: (id, usuarioId, forzarPerdida = false) => 
+    api.patch(`/grupos/${id}/integrantes/${usuarioId}/desactivar`, null, { params: { forzar_perdida: forzarPerdida } }),
+  herramientasEnUso: (grupoId, usuarioId) => 
+    api.get(`/grupos/${grupoId}/integrantes/${usuarioId}/herramientas-en-uso`),
+  herramientasEnUsoGrupo: (id) => api.get(`/grupos/${id}/herramientas-en-uso`),
 }
 
 // ─── Reservas ──────────────────────────────────────────────────────────────────
@@ -137,6 +153,38 @@ export const reservasAPI = {
 //   Permiso: VER_DASHBOARD_COMPLETO
 export const dashboardAPI = {
   residente: () => api.get('/dashboards/residente'),
+}
+
+// ─── Usuarios / Perfil ─────────────────────────────────────────────────────────
+// GET /api/usuarios/me → perfil actual
+// PUT /api/usuarios/:id/password → cambiar contraseña
+export const usuariosAPI = {
+  get: () => api.get('/usuarios/'),
+  getById: (id) => api.get(`/usuarios/${id}`),
+  create: (data) => api.post('/usuarios/', data),
+  getMe: () => api.get('/usuarios/me'),
+  changePassword: (id, newPassword) => api.put(`/usuarios/${id}/password`, { new_password: newPassword }),
+  buscar: (query) => api.get('/usuarios/buscar', { params: { q: query } }),
+}
+
+// ─── Préstamo Personal ─────────────────────────────────────────────────────────
+// GET  /api/usuarios/buscar-dni?dni=...
+// POST /api/prestamo-personal/salida
+// POST /api/prestamo-personal/entrada
+// GET  /api/prestamo-personal/usuario/:id/herramientas
+export const prestamoPersonalAPI = {
+  buscarDni: (dni) => api.get('/usuarios/buscar-dni', { params: { dni } }),
+  salida: (data) => api.post('/prestamo-personal/salida', data),
+  entrada: (data) => api.post('/prestamo-personal/entrada', data),
+  herramientas: (usuarioId) => api.get(`/prestamo-personal/usuario/${usuarioId}/herramientas`),
+}
+
+// ─── Especialidades Técnicas ──────────────────────────────────────────────────
+// GET  /api/especialidades/ → listar todas
+// POST /api/especialidades/ → crear (requiere ADMIN_USUARIOS)
+export const especialidadAPI = {
+  getAll: () => api.get('/especialidades/'),
+  create: (nombre) => api.post('/especialidades/', { nombre }),
 }
 
 export default api

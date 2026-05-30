@@ -10,13 +10,9 @@ class GrupoResponse(BaseModel):
     codigo: str
     nombre: str
     parada_id: int
-    lider_id: int
-    supervisor_id: int
-    estado: str
     descripcion: str | None = None
+    circuito_area: str | None = None
     parada: ParadaResponse | None = None
-    lider: UsuarioResponse | None = None
-    supervisor: UsuarioResponse | None = None
 
     model_config = {"from_attributes": True}
 
@@ -25,22 +21,24 @@ class GrupoCreate(BaseModel):
     codigo: str
     nombre: str
     parada_id: int
-    lider_id: int
-    supervisor_id: int
+    descripcion: str | None = None
+    circuito_area: str | None = None
 
 
 class GrupoUpdate(BaseModel):
+    codigo: str | None = None
     nombre: str | None = None
-    estado: str | None = None  # Activo, Inactivo, Finalizado
-    lider_id: int | None = None
-    supervisor_id: int | None = None
+    descripcion: str | None = None
+    parada_id: int | None = None
+    circuito_area: str | None = None
 
 
 class GrupoIntegranteResponse(BaseModel):
     id: int
-    usuario: "UsuarioResponse"  # forward reference
+    usuario: "UsuarioResponse"
     activo: bool
     fecha_ingreso: date
+    es_lider_frente: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -51,3 +49,4 @@ class GrupoConIntegrantesResponse(GrupoResponse):
 
 class IntegranteAddRequest(BaseModel):
     usuario_id: int
+    es_lider_frente: bool = False

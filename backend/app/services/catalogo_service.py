@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -32,7 +34,7 @@ class CatalogoService:
             )
         return catalogo
 
-    def create(self, data: CatalogoCreate) -> CatalogoMaterial:
+    def create(self, data: CatalogoCreate, usuario_id: int | None = None) -> CatalogoMaterial:
         existing = (
             self.db.query(CatalogoMaterial)
             .filter(CatalogoMaterial.codigo_interno == data.codigo_interno)
@@ -53,17 +55,29 @@ class CatalogoService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Categoría no encontrada",
             )
-        catalogo = CatalogoMaterial(**data.model_dump())
+
+        payload = data.model_dump()
+
+        if payload.get("es_devolutivo") is None:
+            payload["es_devolutivo"] = "DEVOLUTIVO" in (data.tipo_material or "").upper()
+
+        if payload.get("fecha_ingreso") is None:
+            payload["fecha_ingreso"] = date.today()
+
+        payload["creado_por_id"] = usuario_id
+
+        catalogo = CatalogoMaterial(**payload)
         self.db.add(catalogo)
         self.db.commit()
         self.db.refresh(catalogo)
         return catalogo
 
-    def update(self, catalogo_id: int, data: CatalogoUpdate) -> CatalogoMaterial:
+    def update(self, catalogo_id: int, data: CatalogoUpdate, usuario_id: int | None = None) -> CatalogoMaterial:
         catalogo = self.get_by_id(catalogo_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(catalogo, field, value)
+        catalogo.actualizado_por_id = usuario_id
         self.db.commit()
         self.db.refresh(catalogo)
         return catalogo

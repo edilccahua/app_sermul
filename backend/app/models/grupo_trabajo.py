@@ -8,6 +8,7 @@ from sqlalchemy.sql import func
 from ..core.database import Base
 
 if TYPE_CHECKING:
+    from .grupo_integrante import GrupoIntegrante
     from .parada import Parada
     from .usuario import Usuario
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 class GrupoTrabajo(Base):
     __tablename__ = "grupos_trabajo"
     __table_args__ = (
-        UniqueConstraint("codigo", "parada_id", name="uq_grupo_codigo_parada"),
+        UniqueConstraint("codigo", "parada_id", name="grupos_trabajo_codigo_parada_id_key"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -24,14 +25,10 @@ class GrupoTrabajo(Base):
     parada_id: Mapped[int] = mapped_column(
         ForeignKey("paradas.id"), nullable=False
     )
-    lider_id: Mapped[int] = mapped_column(
-        ForeignKey("usuarios.id"), nullable=False
-    )
-    supervisor_id: Mapped[int] = mapped_column(
-        ForeignKey("usuarios.id"), nullable=False
-    )
-    estado: Mapped[str] = mapped_column(String(20), default="Activo")
     descripcion: Mapped[str | None] = mapped_column(Text)
+    circuito_area: Mapped[str | None] = mapped_column(String(200))
+    creado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    actualizado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
     )
@@ -40,9 +37,8 @@ class GrupoTrabajo(Base):
     )
 
     parada: Mapped["Parada"] = relationship("Parada", lazy="joined")
-    lider: Mapped["Usuario"] = relationship(
-        "Usuario", foreign_keys=[lider_id], lazy="joined"
+    integrantes: Mapped[list["GrupoIntegrante"]] = relationship(
+        "GrupoIntegrante", back_populates="grupo"
     )
-    supervisor: Mapped["Usuario"] = relationship(
-        "Usuario", foreign_keys=[supervisor_id], lazy="joined"
-    )
+    creado_por: Mapped["Usuario | None"] = relationship("Usuario", foreign_keys=[creado_por_id], lazy="joined")
+    actualizado_por: Mapped["Usuario | None"] = relationship("Usuario", foreign_keys=[actualizado_por_id], lazy="joined")

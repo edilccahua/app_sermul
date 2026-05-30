@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..core.security import create_access_token, verify_password
+from ..core.security import create_access_token, hash_password, verify_password
 from ..models.usuario import Usuario
 
 
@@ -31,3 +32,14 @@ class AuthService:
         )
 
         return usuario, token
+
+    def change_password(self, usuario_id: int, new_password: str) -> None:
+        usuario = self.db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado",
+            )
+        usuario.password_hash = hash_password(new_password)
+        self.db.commit()
+

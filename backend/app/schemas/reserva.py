@@ -1,8 +1,9 @@
 from datetime import date, datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .parada import ParadaResponse
 from .grupo import GrupoConIntegrantesResponse
+from .usuario import UsuarioResponse
 
 
 class ReservaItemCreate(BaseModel):
@@ -13,16 +14,18 @@ class ReservaItemCreate(BaseModel):
 class ReservaCreate(BaseModel):
     parada_id: int
     grupo_id: int
-    turno: str = Field(pattern=r"^(Dia|Noche)$")
+    turno: str | None = None
     fecha_programada: date
-    tarea_id: int | None = None
     items: list[ReservaItemCreate]
 
 
 class ReservaItemResponse(BaseModel):
+    id: int
     catalogo_id: int
     codigo_interno: str
     nombre: str
+    descripcion: str | None = None
+    marca: str | None = None
     cantidad_solicitada: int
     cantidad_disponible: int
     cantidad_despachada: int
@@ -33,19 +36,20 @@ class ReservaItemResponse(BaseModel):
 class ReservaResponse(BaseModel):
     id: int
     codigo_reserva: str
-    turno: str
+    turno: str | None = None
     fecha_programada: date
     estado: str
     parada_id: int
     grupo_id: int
     creado_por_id: int
-    tarea_id: int | None = None
     motivo_rechazo: str | None = None
     fecha_aprobacion: datetime | None = None
     fecha_despacho: datetime | None = None
+    aprobado_por: UsuarioResponse | None = None
+    despachado_por: UsuarioResponse | None = None
     parada: ParadaResponse | None = None
     grupo: GrupoConIntegrantesResponse | None = None
-    items: list[ReservaItemResponse] = []
+    detalles: list[ReservaItemResponse] = []
     alertas_stock: list[dict] = []
     created_at: datetime | None = None
     updated_at: datetime | None = None

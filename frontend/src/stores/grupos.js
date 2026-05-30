@@ -59,9 +59,8 @@ export const useGruposStore = defineStore('grupos', () => {
     return res.data
   }
 
-  async function addIntegrante(grupoId, usuarioId) {
-    await gruposAPI.addIntegrante(grupoId, { usuario_id: usuarioId })
-    // Refrescar el grupo actual para actualizar integrantes
+  async function addIntegrante(grupoId, usuarioId, esLiderFrente = false) {
+    await gruposAPI.addIntegrante(grupoId, { usuario_id: usuarioId, es_lider_frente: esLiderFrente })
     if (grupoActual.value?.id === grupoId) {
       await fetchById(grupoId)
     }

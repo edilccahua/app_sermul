@@ -1,0 +1,30 @@
+/* ── Fiori Hover Utilities ── */
+
+/* General utility for list rows */
+.hover-sap-list:hover {
+  background-color: var(--sapList_Hover_Background, var(--sapNeutralBackground)) !important;
+}
+
+/* General utility for selectable items/rows */
+.hover-sap-selection:hover {
+  background-color: var(--sapList_SelectionBackgroundColor) !important;
+}
+
+/* General utility for shell elements (header, menus) */
+.hover-sap-shell:hover {
+  background-color: var(--sapShell_HoverBackground) !important;
+}
+
+/* General utility for standard buttons (if applicable) */
+.hover-sap-button:hover {
+  background-color: var(--sapButton_Hover_Background, var(--sapList_Hover_Background)) !important;
+}
+
+/* 
+ * Safe Hover for Table Rows with State
+ * This ensures that if a row is marked as error (.is-error) or selected (.is-selected), 
+ * the hover effect will NOT apply, respecting the inline style priority for those states.
+ */
+.hover-sap-table-row:not(.is-error):not(.is-selected):hover {
+  background-color: var(--sapList_Hover_Background, var(--sapNeutralBackground)) !important;
+}

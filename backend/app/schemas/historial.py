@@ -19,6 +19,7 @@ class HistorialResponse(BaseModel):
     usuario_ejecuta_id: int | None = None
     grupo_destino_id: int | None = None
     usuario_receptor_id: int | None = None
+    reserva_id: int | None = None
     estado_origen: str | None = None
     estado_destino: str | None = None
     observaciones: str | None = None
@@ -39,3 +40,12 @@ class HistorialFilter(BaseModel):
     fecha_desde: datetime | None = None
     fecha_hasta: datetime | None = None
     catalogo_id: int | None = None
+    grupo_destino_id: int | None = None
+    search: str | None = None
+
+
+class HistorialPaginadoResponse(BaseModel):
+    items: list[HistorialResponse]
+    total: int
+    offset: int
+    limit: int

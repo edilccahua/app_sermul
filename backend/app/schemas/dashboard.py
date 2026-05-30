@@ -18,9 +18,16 @@ class GrupoHerramientasResumen(BaseModel):
     herramientas_en_uso: int
 
 
+class GrupoPerdidasResumen(BaseModel):
+    grupo_id: int
+    codigo_grupo: str
+    nombre_grupo: str
+    cantidad_perdida: int
+    valor_perdido: float
+
+
 class DashboardResidenteResponse(BaseModel):
-    # Saturación
-    pct_herramientas_en_uso: float
+    # Saturación (calculada por frontend si necesita)
     herramientas_disponibles: int
     herramientas_en_uso: int
     herramientas_malogradas: int
@@ -40,3 +47,7 @@ class DashboardResidenteResponse(BaseModel):
     pendientes_cierre: int = 0
     reservas_pendientes: int = 0
     epps_por_vencer: int = 0
+    
+    # Tablas compactas
+    top_grupos_perdidas: list[GrupoPerdidasResumen] = []
+    tabla_reservas_pendientes: list[dict] = []
