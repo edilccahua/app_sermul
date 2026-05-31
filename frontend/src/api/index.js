@@ -9,7 +9,7 @@ import axios from 'axios'
 
 // ─── Instancia base ────────────────────────────────────────────────────────────
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: 'https://sermul-backend.onrender.com/api',
   timeout: 10_000,
 })
 
