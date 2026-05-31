@@ -1,8 +1,9 @@
+@import './fiori-utilities.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import './fiori-utilities.css';
+
 
 /* ── Destrucción de geometría shadcn → Fiori 2px ── */
 :root {
